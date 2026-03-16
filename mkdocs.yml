@@ -1,0 +1,52 @@
+site_name: pyfgs
+repo_url: https://github.com/tomdstanton/pyfgs
+site_url: https://tomdstanton.github.io/pyfgs
+site_description: PyO3 bindings and Python interface to FragGeneScanRs, a gene prediction model for short and error-prone reads.
+site_author: Tom Stanton
+edit_uri: edit/main/docs/
+repo_name: tomdstanton/pyfgs
+copyright: Maintained by <a href="https://tomdstanton.com">tomdstanton</a>.
+
+nav:
+  - Home: index.md
+  - Modules: modules.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["src/pyfgs"]
+theme:
+  name: material
+  feature:
+    tabs: true
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: white
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  icon:
+    repo: fontawesome/brands/github
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/tomdstanton/pyfgs
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/pyfgs
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true

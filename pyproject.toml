@@ -1,0 +1,98 @@
+[project]
+name = "pyfgs"
+description = "PyO3 bindings and Python interface to FragGeneScanRs, a gene prediction model for short and error-prone reads."
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+dynamic = ["version"]
+authors = [{ name = "Tom Stanton", email = "tomdstanton@gmail.com" }]
+readme = {file = "README.md", content-type = "text/markdown"}
+keywords = ["bioinformatics", "genome", "orf", "gene", "fraggenescan"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://tomdstanton.github.io/pyfgs/"
+Repository = "https://github.com/tomdstanton/pyfgs"
+Documentation = "https://tomdstanton.github.io/pyfgs/"
+"Bug Tracker" = "https://github.com/tomdstanton/pyfgs/issues"
+Changelog= "https://github.com/tomdstanton/pyfgs/blob/master/CHANGELOG.md"
+Coverage = "https://codecov.io/gh/tomdstanton/pyfgs/"
+Builds = "https://github.com/tomdstanton/pyfgs/actions"
+PyPI = "https://pypi.org/project/pyfgs"
+
+[dependency-groups]
+test = ["pytest"]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings",
+    "mkdocs-api-autonav",
+    "mkdocs-include-markdown-plugin",
+]
+dev = [{include-group = "test"}, {include-group = "docs"}]
+
+[build-system]
+requires = ["maturin>=1.12,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+binding = "pyo3"
+features = ["pyo3/extension-module"]
+module-name = "pyfgs._pyfgs"
+
+[tool.black]
+line-length = 100
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.egg
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.nox
+  | \.tox
+  | \.venv
+  | \venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | setup.py
+)/
+'''
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "--cov=python/pygfs --cov-report term-missing"
+
+[tool.ruff]
+select = ["E", "F", "UP", "I001", "T201", "T203"]
+ignore = ["E501"]
+line-length = 100
+target-version = "py310"
+fix = true
