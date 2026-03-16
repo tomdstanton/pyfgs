@@ -1,5 +1,10 @@
 """Command line interface for `pyfgs` and main entry point"""
-
+import typing
+from importlib import resources, metadata
+import argparse
+from sys import stdin, stdout
+from pathlib import Path
+import logging
 
 """
 USAGE:
@@ -37,7 +42,6 @@ OPTIONS:
                                                [illumina_5] for Illumina sequencing reads with about 0.5% error rate
                                                [illumina_10] for Illumina sequencing reads with about 1% error rate
 """
-
 
 
 def cli(): pass
