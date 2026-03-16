@@ -1,50 +1,94 @@
-"""Command line interface for `pyfgs` and main entry point"""
-import typing
-from importlib import resources, metadata
 import argparse
-from sys import stdin, stdout
-from pathlib import Path
-import logging
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from pyfgs import Model, FastaReader, FastqReader, GeneFinder
 
-"""
-USAGE:
-    pyfgs [FLAGS] [OPTIONS] --training-file <train_file_name>
-
-FLAGS:
-    -f, --formatted    Format the DNA output.
-    -h, --help         Prints help information
-    -u, --unordered    Do not preserve record order in output (faster).
-    -V, --version      Prints version information
-
-OPTIONS:
-    -a, --aa-file <aa_file>                    Output predicted proteins to this file (supersedes -o).
-    -w, --complete <complete>                  The input sequence has complete genomic sequences; not short sequence
-                                               reads. [default: 0]
-    -g, --gff-file <gff_file>                  Output metadata to this gff formatted file (supersedes -o).
-    -m, --meta-file <meta_file>                Output metadata to this file (supersedes -o).
-    -n, --nucleotide-file <nucleotide_file>    Output predicted genes to this file (supersedes -o).
-    -o, --output-prefix <output_prefix>        Output metadata (.out and .gff), proteins (.faa) and genes (.ffn) to
-                                               files with this prefix. Use 'stdout' to write the predicted proteins to
-                                               standard output.
-    -s, --seq-file-name <seq_file_name>        Sequence file name including the full path. Using 'stdin' (or not
-                                               suplying this argument) reads from standard input. [default: stdin]
-    -p, --thread-num <thread_num>              The number of threads used by FragGeneScan++. [default: 1]
-    -t, --training-file <train_file_name>      File name that contains model parameters; this file should be in the -r
-                                               directory or one of the following:
-                                               [complete] for complete genomic sequences or short sequence reads without
-                                               sequencing error
-                                               [sanger_5] for Sanger sequencing reads with about 0.5% error rate
-                                               [sanger_10] for Sanger sequencing reads with about 1% error rate
-                                               [454_5] for 454 pyrosequencing reads with about 0.5% error rate
-                                               [454_10] for 454 pyrosequencing reads with about 1% error rate
-                                               [454_30] for 454 pyrosequencing reads with about 3% error rate
-                                               [illumina_1] for Illumina sequencing reads with about 0.1% error rate
-                                               [illumina_5] for Illumina sequencing reads with about 0.5% error rate
-                                               [illumina_10] for Illumina sequencing reads with about 1% error rate
-"""
+# Constants ------------------------------------------------------------------------------------------------------------
+_MODEL_MAP = {
+    "illumina_1": Model.Illumina1,
+    "illumina_5": Model.Illumina5,
+    "illumina_10": Model.Illumina10,
+    "sanger_5": Model.Sanger5,
+    "sanger_10": Model.Sanger10,
+    "454_5": Model.Pyro454_5,
+    "454_10": Model.Pyro454_10,
+    "454_30": Model.Pyro454_30,
+    "complete": Model.Complete,
+}
 
 
-def cli(): pass
+# Functions ------------------------------------------------------------------------------------------------------------
+def _stream_fasta():
+    """A lightweight, pure-Python generator for piping FASTA via stdin."""
+    header = b""
+    seq = bytearray()
+    
+    # Read the raw byte stream to avoid UTF-8 overhead
+    for line in sys.stdin.buffer:
+        if line.startswith(b">"):
+            if header:
+                yield header, bytes(seq)
+            # Match seq_io behavior: grab ID up to the first space
+            header = line[1:].split(b" ", 1)[0].strip()
+            seq = bytearray()
+        else:
+            seq.extend(line.strip())
+            
+    if header:
+        yield header, bytes(seq)
 
 
+def _stream_fastq():
+    pass
 
+
+def _process_record(finder, record: tuple[bytes, bytes]):
+    """Worker function for the thread pool."""
+    # record is either (header, seq) or (header, seq, qual)
+    header = record[0]
+    seq = record[1]
+    genes = finder.find_genes(header, seq)
+    return header, genes
+
+
+def main():
+
+    parser = argparse.ArgumentParser(
+        prog="pyfgs", usage="%(prog)s <seq> <out> [options]", add_help=False,
+        description="🔗🐍⏭️\tPyO3 bindings and Python interface to FragGeneScanRs,\n"
+                    "\ta gene prediction model for short and error-prone reads.",
+        formatter_class = argparse.RawTextHelpFormatter
+    )
+    io_group = parser.add_argument_group("Inputs and outputs 💽", "")
+    io_group.add_argument("seq", help="Sequence file (or '-' for stdin)")
+    io_group.add_argument("out", help="Output file, defaults to stdout", default="-")
+    opts_group = parser.add_argument_group("Options\t⚙️", "")
+    opts_group.add_argument("-f", "--format", metavar='', choices=['faa', 'ffn', 'bed'],
+                            help="Output format (default: faa):\n"
+                                 " - faa (protein fasta)\n"
+                                 " - ffn (nucleotide fasta)\n"
+                                 " - bed",
+                            default="faa")
+    opts_group.add_argument("-m", "--model", metavar='', choices=_MODEL_MAP.keys(), default="complete",
+                        help="Sequence error model (default: complete):" + "".join('\n - ' + i for i in _MODEL_MAP.keys()))
+    other_group = parser.add_argument_group("Other 🚧", "")
+    other_group.add_argument("-v", "--version", action='version', help="Print version and exit")
+    other_group.add_argument("-h", "--help", action='help', help="Print help and exit")
+
+    
+    args = parser.parse_args()
+
+    model = _MODEL_MAP[args.model]
+    finder = GeneFinder(model)
+    if args.seq == "-":
+        reader = (_stream_fasta if model == Model.Complete else _stream_fastq)
+    else:
+        reader = (FastaReader if model == Model.Complete else FastqReader)(args.seq)
+
+    with ThreadPoolExecutor(max_workers=args.thread) as executor:
+        # We use executor.map to guarantee the outputs are written in the
+        # exact same order as the input file, just like the original CLI!
+
+        # A tiny wrapper lambda to pass the finder along with the record
+        futures = executor.map(lambda rec: _process_record(finder, rec), reader)
+        pass

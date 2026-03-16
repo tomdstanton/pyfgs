@@ -1,4 +1,4 @@
-# ⏭️ pyfgs [![Stars](https://img.shields.io/github/stars/tomdstanton/pyfgs.svg?style=social&maxAge=3600&label=Star)](https://github.com/tomdstanton/pyfgs/stargazers)
+# 🔗🐍⏭️ `pyfgs` [![Stars](https://img.shields.io/github/stars/tomdstanton/pyfgs.svg?style=social&maxAge=3600&label=Star)](https://github.com/tomdstanton/pyfgs/stargazers)
 
 *PyO3 bindings and Python interface to [FragGeneScanRs](https://github.com/unipept/FragGeneScanRs),
 a gene prediction model for short and error-prone reads.*
@@ -24,47 +24,6 @@ internals, which has the following advantages:
   strings or bytes, which avoids the overhead of formatting your input to
   FASTA for FragGeneScanRs.
 
-### 🧶 Thread-safety
-
-[`pyfgs.GeneFinder`](https://tomdstanton.github.io/pyfgs/api/#pyfgs.GeneFinder)
-instances are thread-safe. In addition, the
-[`find_genes`](https://tomdstanton.github.io/pyfgs/api/#pyfgs.GeneFinder.find_genes)
-method is re-entrant so you can use a pool to process sequences in parallel:
-```python
-import time
-from concurrent.futures import ThreadPoolExecutor
-import pyfgs
-
-finder = pyfgs.GeneFinder(pyfgs.Model.Illumina5, whole_genome=False)
-reader = pyfgs.FastaReader("assembly.fasta" )
-
-start_time = time.perf_counter()
-total_genes = 0
-total_reads = 0
-
-# Fire up the thread pool!
-# Python defaults to min(32, os.cpu_count() + 4) workers, which is usually perfect.
-with ThreadPoolExecutor() as executor:
-    # We read records sequentially in the main thread,
-    # and dispatch the heavy Viterbi math to the worker threads.
-    futures = [
-        executor.submit(process_record, finder, record)
-        for record in reader
-    ]
-
-    # Gather the results as they finish
-    for future in futures:
-        header, gene_count = future.result()
-        total_genes += gene_count
-        total_reads += 1
-
-
-print("-" * 30)
-print(f"Processed {total_reads} reads.")
-print(f"Found {total_genes} ORFs.")
-print(f"Total time: {duration:.2f} seconds")
-print(f"Speed: {total_reads / duration:.2f} reads/second")
-```
 
 ## 🔧 Installing
 
@@ -75,6 +34,46 @@ This project is supported on Python 3.10 and later.
 ```console
 $ pip install pyfgs
 ```
+
+## Usage
+
+For API usage, please refer to the documentation.
+For CLI usage, type `pyfgs --help`
+
+```console
+usage: pyfgs <seq> <out> [options]
+
+🔗🐍⏭️	PyO3 bindings and Python interface to FragGeneScanRs,
+	a gene prediction model for short and error-prone reads.
+
+Inputs and outputs 💽:
+
+  seq            Sequence file (or '-' for stdin)
+  out            Output file, defaults to stdout
+
+Options	⚙️:
+
+  -f, --format   Output format (default: faa):
+                  - faa (protein fasta)
+                  - ffn (nucleotide fasta)
+                  - bed
+  -m, --model    Sequence error model (default: complete):
+                  - illumina_1
+                  - illumina_5
+                  - illumina_10
+                  - sanger_5
+                  - sanger_10
+                  - 454_5
+                  - 454_10
+                  - 454_30
+                  - complete
+
+Other 🚧:
+
+  -v, --version  Print version and exit
+  -h, --help     Print help and exit
+```
+
 
 
 ## 🔖 Citation

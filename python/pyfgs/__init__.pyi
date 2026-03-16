@@ -1,4 +1,4 @@
-from typing import List, Iterator, Tuple
+from typing import List, Iterator, Tuple, Optional, Literal
 
 
 class Model:
@@ -53,10 +53,10 @@ class FastaReader:
         """
         ...
 
-    def __iter__(self) -> Iterator[Tuple[str, str]]:
+    def __iter__(self) -> Iterator[Tuple[bytes, bytes]]:
         ...
 
-    def __next__(self) -> Tuple[str, str]: ...
+    def __next__(self) -> Tuple[bytes, bytes]: ...
 
 
 
@@ -81,10 +81,10 @@ class FastqReader:
         """
         ...
 
-    def __iter__(self) -> Iterator[Tuple[str, str, str]]:
+    def __iter__(self) -> Iterator[Tuple[bytes, bytes, bytes]]:
         ...
 
-    def __next__(self) -> Tuple[str, str, str]: ...
+    def __next__(self) -> Tuple[bytes, bytes, bytes]: ...
 
 
 class Gene:
@@ -99,17 +99,17 @@ class Gene:
 
     @property
     def start(self) -> int:
-        """int: The 1-based start position of the gene."""
+        """The 0-based start coordinate of the ORF."""
         ...
 
     @property
     def end(self) -> int:
-        """int: The 1-based end position of the gene."""
+        """The 0-based, half-open end coordinate of the ORF."""
         ...
 
     @property
-    def strand(self) -> str:
-        """str: The strand of the gene ('+' or '-')."""
+    def strand(self) -> int:
+        """The strand of the ORF (1 for forward, -1 for reverse)."""
         ...
 
     @property
@@ -120,6 +120,14 @@ class Gene:
     @property
     def score(self) -> float:
         """float: The Viterbi score of the gene prediction."""
+        ...
+
+    def sequence(self) -> bytes:
+        """Lazily compute the raw nucleotide sequence of the ORF."""
+        ...
+
+    def translation(self) -> bytes:
+        """Lazily compute the translated amino acid sequence of the ORF."""
         ...
 
 
@@ -135,25 +143,27 @@ class GeneFinder:
         ```
     """
 
-    def __init__(self, model: Model, whole_genome: bool = False) -> None:
-        """Initialize the GeneFinder.
+    def __init__(self, model: Model, whole_genome: Optional[bool] = None) -> None:
+        """
+        Initialize the GeneFinder.
 
         Args:
-            model (Model): The sequencing error model to use (e.g., pyfgs.Model.Illumina5).
-            whole_genome (bool, optional): Set to True if analyzing complete genomic sequences
-                rather than short reads. Defaults to False.
+            model: The sequencing error model to use.
+            whole_genome: Set to True if analyzing complete genomic sequences.
+                          If None, it defaults to True for Model.Complete,
+                          and False for all short-read models.
         """
         ...
 
-    def find_genes(self, header: str, sequence: str) -> List[Gene]:
+    def find_genes(self, header: bytes, sequence: bytes) -> List[Gene]:
         """Predict open reading frames in a given DNA sequence.
 
         This method releases the GIL, allowing for safe multi-threading
         across multiple CPU cores.
 
         Args:
-            header (str): The sequence identifier.
-            sequence (str): The raw nucleotide string.
+            header (bytes): The sequence identifier.
+            sequence (bytes): The raw nucleotide buffer.
 
         Returns:
             List[Gene]: A list of predicted Gene objects.

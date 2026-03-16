@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use pyo3::types::PyBytes;
 use std::path::PathBuf;
 use std::fs::File;
 
@@ -8,7 +9,7 @@ use seq_io::fastq::{self, Record as FastqRecord};
 // Import directly from the crates.io library (v1.1.0)
 use frag_gene_scan_rs::hmm::{self, Global, Local};
 use frag_gene_scan_rs::viterbi::viterbi;
-use frag_gene_scan_rs::dna::{Nuc, count_cg_content};
+use frag_gene_scan_rs::dna::{Nuc, count_cg_content, trinucleotide, CODON_CODE, ANTI_CODON_CODE};
 
 /// The available sequencing error models for FragGeneScanRs.
 ///
@@ -90,11 +91,12 @@ impl FastaReader {
         slf
     }
 
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<(String, String)>> {
+    // Pass `py: Python<'py>` to interact with Python memory
+    fn __next__<'py>(mut slf: PyRefMut<'_, Self>, py: Python<'py>) -> PyResult<Option<(Bound<'py, PyBytes>, Bound<'py, PyBytes>)>> {
         match slf.reader.next() {
             Some(Ok(record)) => {
-                let head = String::from_utf8_lossy(record.id_bytes()).into_owned();
-                let seq = String::from_utf8_lossy(record.seq()).into_owned();
+                let head = PyBytes::new(py, record.id_bytes());
+                let seq = PyBytes::new(py, record.seq());
                 Ok(Some((head, seq)))
             }
             Some(Err(e)) => Err(pyo3::exceptions::PyIOError::new_err(e.to_string())),
@@ -136,12 +138,12 @@ impl FastqReader {
     }
 
     /// Yields a tuple of (header, sequence, quality_string)
-    fn __next__(mut slf: PyRefMut<'_, Self>) -> PyResult<Option<(String, String, String)>> {
+    fn __next__<'py>(mut slf: PyRefMut<'_, Self>, py: Python<'py>) -> PyResult<Option<(Bound<'py, PyBytes>, Bound<'py, PyBytes>, Bound<'py, PyBytes>)>> {
         match slf.reader.next() {
             Some(Ok(record)) => {
-                let head = String::from_utf8_lossy(record.id_bytes()).into_owned();
-                let seq = String::from_utf8_lossy(record.seq()).into_owned();
-                let qual = String::from_utf8_lossy(record.qual()).into_owned();
+                let head = PyBytes::new(py, record.id_bytes());
+                let seq = PyBytes::new(py, record.seq());
+                let qual = PyBytes::new(py, record.qual());
                 Ok(Some((head, seq, qual)))
             }
             Some(Err(e)) => Err(pyo3::exceptions::PyIOError::new_err(e.to_string())),
@@ -165,22 +167,82 @@ pub struct Gene {
     /// int: The 1-based end position of the gene.
     #[pyo3(get)]
     pub end: usize,
-    /// str: The strand of the gene ('+' or '-').
+    /// str: The strand of the gene (1 or -1).
     #[pyo3(get)]
-    pub strand: String,
+    pub strand: i8,
     /// int: The reading frame (1, 2, or 3).
     #[pyo3(get)]
     pub frame: usize,
     /// float: The Viterbi score of the gene prediction.
     #[pyo3(get)]
     pub score: f64,
+
+    // Internal fields hidden from Python used for lazy evaluation
+    dna_nucs: Vec<Nuc>,
+    forward_strand: bool,
+    whole_genome: bool,
 }
 
 #[pymethods]
 impl Gene {
     fn __repr__(&self) -> String {
-        format!("<Gene start={} end={} strand='{}' frame={} score={:.2}>",
+        // Updated to print the strand as an integer
+        format!("<Gene start={} end={} strand={} frame={} score={:.2}>",
                 self.start, self.end, self.strand, self.frame, self.score)
+    }
+
+    /// Lazily computes and returns the raw nucleotide sequence as bytes.
+    pub fn sequence<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        let clean_dna: Vec<Nuc> = self.dna_nucs.iter()
+            .filter(|n| !n.is_insertion())
+            .copied()
+            .collect();
+
+        let dna_bytes: Vec<u8> = if self.forward_strand {
+            clean_dna.iter().map(|&n| u8::from(n)).collect()
+        } else {
+            clean_dna.iter().rev().map(|&n| u8::from(n.rc())).collect()
+        };
+
+        PyBytes::new(py, &dna_bytes)
+    }
+
+    /// Lazily computes and returns the translated amino acid sequence as bytes.
+    pub fn translation<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        let clean_dna: Vec<Nuc> = self.dna_nucs.iter()
+            .filter(|n| !n.is_insertion())
+            .copied()
+            .collect();
+
+        let mut protein_bytes: Vec<u8> = if self.forward_strand {
+            clean_dna.chunks_exact(3)
+                .map(|c| trinucleotide(c).map(|i| CODON_CODE[i]).unwrap_or(b'X'))
+                .collect()
+        } else {
+            clean_dna.rchunks_exact(3)
+                .map(|c| trinucleotide(c).map(|i| ANTI_CODON_CODE[i]).unwrap_or(b'X'))
+                .collect()
+        };
+
+        if protein_bytes.last() == Some(&b'*') {
+            protein_bytes.pop();
+        }
+
+        if self.whole_genome {
+            if self.forward_strand {
+                let s = trinucleotide(&self.dna_nucs);
+                if s == trinucleotide(&[Nuc::G, Nuc::T, Nuc::G]) || s == trinucleotide(&[Nuc::T, Nuc::T, Nuc::G]) {
+                    protein_bytes[0] = b'M';
+                }
+            } else if self.dna_nucs.len() >= 3 {
+                let s = trinucleotide(&self.dna_nucs[self.dna_nucs.len() - 3..]);
+                if s == trinucleotide(&[Nuc::C, Nuc::A, Nuc::C]) || s == trinucleotide(&[Nuc::C, Nuc::A, Nuc::A]) {
+                    protein_bytes[0] = b'M';
+                }
+            }
+        }
+
+        PyBytes::new(py, &protein_bytes)
     }
 }
 
@@ -209,9 +271,12 @@ impl GeneFinder {
     ///     whole_genome (bool, optional): Set to True if analyzing complete genomic sequences
     ///         rather than short reads. Defaults to False.
     #[new]
-    #[pyo3(signature = (model, whole_genome=false))]
-    fn new(model: Model, whole_genome: bool) -> PyResult<Self> {
+    #[pyo3(signature = (model, whole_genome=None))]
+    fn new(model: Model, whole_genome: Option<bool>) -> PyResult<Self> {
         let model_name = model.as_str();
+
+        // Infer whole_genome if the user didn't explicitly provide it
+        let is_whole_genome = whole_genome.unwrap_or(model == Model::Complete);
 
         let (global, locals) = hmm::get_train_from_file(
             PathBuf::from(""),
@@ -223,7 +288,7 @@ impl GeneFinder {
         Ok(GeneFinder {
             global,
             locals,
-            whole_genome
+            whole_genome: is_whole_genome
         })
     }
 
@@ -243,19 +308,21 @@ impl GeneFinder {
     ///     ```python
     ///     genes = finder.find_genes("seq1", "ATGCGTACGTTAG")
     ///     ```
-    fn find_genes(&self, py: Python, header: String, sequence: String) -> PyResult<Vec<Gene>> {
-        // In PyO3 0.28+, allow_threads is renamed to detach
-        let results = py.detach(|| {
-            // Because crates.io v1.1.0 doesn't export dna(), we do the string parsing directly
-            let nuc_seq: Vec<Nuc> = sequence
-                .bytes()
-                .map(|b| b.to_ascii_uppercase())
-                .map(Nuc::from)
-                .collect();
+    // Changed String to &str for zero-copy borrowing from Python
+    fn find_genes(&self, py: Python, header: Vec<u8>, sequence: Vec<u8>) -> PyResult<Vec<Gene>> {
 
-            let head_bytes = header.into_bytes();
+        // 1. We skip string mapping and iterate the bytes directly
+        let nuc_seq: Vec<Nuc> = sequence
+            .into_iter()
+            .filter(|b| !b.is_ascii_whitespace())
+            .map(|b| b.to_ascii_uppercase())
+            .map(Nuc::from)
+            .collect();
 
-            // v1.1.0 viterbi requires us to manually select the local model based on CG content
+        let head_bytes = header; // It's already bytes now!
+
+        // 2. Move the owned data into the background thread (detaching the GIL)
+        let results = py.detach(move || {
             let cg = count_cg_content(&nuc_seq);
             let local_model = &self.locals[cg];
 
@@ -269,11 +336,15 @@ impl GeneFinder {
 
             prediction.genes.into_iter().map(|g| {
                 Gene {
-                    start: g.start,
+                    // Convert 1-based closed to 0-based half-open for Python slicing
+                    start: g.start.saturating_sub(1),
                     end: g.end,
-                    strand: if g.forward_strand { "+".to_string() } else { "-".to_string() },
+                    strand: if g.forward_strand { 1 } else { -1 },
                     frame: g.frame,
-                    score: g.score
+                    score: g.score,
+                    dna_nucs: g.dna,
+                    forward_strand: g.forward_strand,
+                    whole_genome: self.whole_genome,
                 }
             }).collect()
         });
