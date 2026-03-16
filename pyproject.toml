@@ -42,8 +42,7 @@ test = ["pytest"]
 docs = [
     "mkdocs",
     "mkdocs-material",
-    "mkdocstrings",
-    "mkdocs-api-autonav",
+    "mkdocstrings-python",
     "mkdocs-include-markdown-plugin",
 ]
 dev = [{include-group = "test"}, {include-group = "docs"}]
@@ -88,7 +87,7 @@ disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--cov=python/pygfs --cov-report term-missing"
+addopts = "--cov=python/pyfgs --cov-report term-missing"
 
 [tool.ruff]
 select = ["E", "F", "UP", "I001", "T201", "T203"]

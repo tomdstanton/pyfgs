@@ -1,8 +1,9 @@
 use pyo3::prelude::*;
 use std::path::PathBuf;
 use std::fs::File;
-use seq_io::fasta;
-use seq_io::fastq;
+
+use seq_io::fasta::{Reader, Record as FastaRecord};
+use seq_io::fastq::{self, Record as FastqRecord};
 
 // Import directly from the crates.io library (v1.1.0)
 use frag_gene_scan_rs::hmm::{self, Global, Local};
@@ -10,6 +11,23 @@ use frag_gene_scan_rs::viterbi::viterbi;
 use frag_gene_scan_rs::dna::{Nuc, count_cg_content};
 
 /// The available sequencing error models for FragGeneScanRs.
+///
+/// Attributes:
+///     Illumina1: Illumina sequencing reads with about 0.1% error rate.
+///     Illumina5: Illumina sequencing reads with about 0.5% error rate.
+///     Illumina10: Illumina sequencing reads with about 1% error rate.
+///     Sanger5: Sanger sequencing reads with about 0.5% error rate.
+///     Sanger10: Sanger sequencing reads with about 1% error rate.
+///     Pyro454_5: 454 pyrosequencing reads with about 0.5% error rate.
+///     Pyro454_10: 454 pyrosequencing reads with about 1% error rate.
+///     Pyro454_30: 454 pyrosequencing reads with about 3% error rate.
+///     Complete: Complete genomic sequences or short sequence reads without sequencing error.
+///
+/// Example:
+///     ```python
+///     from pyfgs import Model
+///     model = Model.Complete
+///     ```
 #[pyclass(eq, eq_int, from_py_object)]
 #[derive(PartialEq, Clone, Debug)]
 pub enum Model {
@@ -40,19 +58,32 @@ impl Model {
     }
 }
 
-/// A memory-efficient FASTA parser that yields (header, sequence) tuples.
+/// A memory-efficient FASTA parser yielding (header, sequence).
+///
+/// Example:
+///     ```python
+///     from pyfgs import FastaReader
+///     
+///     reader = FastaReader("genome.fasta")
+///     for header, sequence in reader:
+///         print(f">{header}\n{sequence}")
+///     ```
 #[pyclass(unsendable)]
 pub struct FastaReader {
-    reader: fasta::Reader<File>,
+    reader: Reader<File>,
 }
 
 #[pymethods]
 impl FastaReader {
+    /// Open a FASTA file for reading.
+    ///
+    /// Args:
+    ///     path (str): The path to the FASTA file.
     #[new]
     fn new(path: String) -> PyResult<Self> {
         let file = File::open(&path)
             .map_err(|e| pyo3::exceptions::PyFileNotFoundError::new_err(format!("Could not open {}: {}", path, e)))?;
-        Ok(Self { reader: fasta::Reader::new(file) })
+        Ok(Self { reader: Reader::new(file) })
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
@@ -72,7 +103,16 @@ impl FastaReader {
     }
 }
 
-/// A memory-efficient FASTQ parser that yields (header, sequence, qualities) tuples.
+/// A memory-efficient FASTQ parser yielding (header, sequence, qualities).
+///
+/// Example:
+///     ```python
+///     from pyfgs import FastqReader
+///     
+///     reader = FastqReader("reads.fastq")
+///     for header, sequence, qualities in reader:
+///         print(f"@{header}\n{sequence}\n+\n{qualities}")
+///     ```
 #[pyclass(unsendable)]
 pub struct FastqReader {
     reader: fastq::Reader<File>,
@@ -80,6 +120,10 @@ pub struct FastqReader {
 
 #[pymethods]
 impl FastqReader {
+    /// Open a FASTQ file for reading.
+    ///
+    /// Args:
+    ///     path (str): The path to the FASTQ file.
     #[new]
     fn new(path: String) -> PyResult<Self> {
         let file = File::open(&path)
@@ -107,16 +151,27 @@ impl FastqReader {
 }
 
 /// Represents a single predicted Open Reading Frame (ORF).
+///
+/// Example:
+///     ```python
+///     for gene in genes:
+///         print(f"Start: {gene.start}, End: {gene.end}, Strand: {gene.strand}, Frame: {gene.frame}, Score: {gene.score}")
+///     ```
 #[pyclass]
 pub struct Gene {
+    /// int: The 1-based start position of the gene.
     #[pyo3(get)]
     pub start: usize,
+    /// int: The 1-based end position of the gene.
     #[pyo3(get)]
     pub end: usize,
+    /// str: The strand of the gene ('+' or '-').
     #[pyo3(get)]
     pub strand: String,
+    /// int: The reading frame (1, 2, or 3).
     #[pyo3(get)]
     pub frame: usize,
+    /// float: The Viterbi score of the gene prediction.
     #[pyo3(get)]
     pub score: f64,
 }
@@ -130,6 +185,14 @@ impl Gene {
 }
 
 /// The main engine for finding genes, holding the HMM in memory.
+///
+/// Example:
+///     ```python
+///     from pyfgs import GeneFinder, Model
+///     
+///     finder = GeneFinder(Model.Complete, whole_genome=True)
+///     genes = finder.find_genes("seq1", "ATGCGTA...")
+///     ```
 #[pyclass]
 pub struct GeneFinder {
     global: Box<Global>,
@@ -139,6 +202,12 @@ pub struct GeneFinder {
 
 #[pymethods]
 impl GeneFinder {
+    /// Initialize the GeneFinder.
+    ///
+    /// Args:
+    ///     model (Model): The sequencing error model to use (e.g., pyfgs.Model.Illumina5).
+    ///     whole_genome (bool, optional): Set to True if analyzing complete genomic sequences
+    ///         rather than short reads. Defaults to False.
     #[new]
     #[pyo3(signature = (model, whole_genome=false))]
     fn new(model: Model, whole_genome: bool) -> PyResult<Self> {
@@ -158,6 +227,22 @@ impl GeneFinder {
         })
     }
 
+    /// Predict open reading frames in a given DNA sequence.
+    ///
+    /// This method releases the GIL, allowing for safe multi-threading
+    /// across multiple CPU cores.
+    ///
+    /// Args:
+    ///     header (str): The sequence identifier.
+    ///     sequence (str): The raw nucleotide string.
+    ///
+    /// Returns:
+    ///     List[Gene]: A list of predicted Gene objects.
+    ///     
+    /// Example:
+    ///     ```python
+    ///     genes = finder.find_genes("seq1", "ATGCGTACGTTAG")
+    ///     ```
     fn find_genes(&self, py: Python, header: String, sequence: String) -> PyResult<Vec<Gene>> {
         // In PyO3 0.28+, allow_threads is renamed to detach
         let results = py.detach(|| {

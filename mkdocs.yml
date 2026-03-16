@@ -6,16 +6,24 @@ site_author: Tom Stanton
 edit_uri: edit/main/docs/
 repo_name: tomdstanton/pyfgs
 copyright: Maintained by <a href="https://tomdstanton.com">tomdstanton</a>.
+watch: [mkdocs.yml, README.md, python]
 
 nav:
   - Home: index.md
-  - Modules: modules.md
+  - API Reference: api.md
+
 plugins:
   - search
   - mkdocstrings:
       handlers:
         python:
-          paths: ["src/pyfgs"]
+          paths: [python]
+          options:
+            show_root_heading: true
+            show_source: false # Hide the 'source' button since it's just a stub file
+            heading_level: 2
+  - include-markdown
+
 theme:
   name: material
   feature:
@@ -23,15 +31,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: white
-      accent: deep orange
+      primary: light blue
+      accent: light blue
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: black
-      accent: deep orange
+      primary: light blue
+      accent: light blue
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
@@ -50,3 +58,5 @@ markdown_extensions:
       permalink: true
   - pymdownx.arithmatex:
       generic: true
+  - admonition
+  - footnotes
