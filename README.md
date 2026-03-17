@@ -3,10 +3,18 @@
 *PyO3 bindings and Python interface to [FragGeneScanRs](https://github.com/unipept/FragGeneScanRs),
 a gene prediction model for short and error-prone reads.*
 
-[![Release](https://img.shields.io/github/v/release/tomdstanton/pyfgs)](https://img.shields.io/github/v/release/tomdstanton/pyfgs)
-[![Build status](https://img.shields.io/github/actions/workflow/status/tomdstanton/pyfgs/main.yml?branch=main)](https://github.com/tomdstanton/pyfgs/actions/workflows/main.yml?query=branch%3Amain)
-[![Commit activity](https://img.shields.io/github/commit-activity/m/tomdstanton/pyfgs)](https://img.shields.io/github/commit-activity/m/tomdstanton/pyfgs)
-[![License](https://img.shields.io/github/license/tomdstanton/pyfgs)](https://img.shields.io/github/license/tomdstanton/pyfgs)
+[![Release](https://img.shields.io/github/v/release/tomdstanton/pyfgs?style=flat-square)](https://img.shields.io/github/v/release/tomdstanton/pyfgs)
+[![License](https://img.shields.io/github/license/tomdstanton/pyfgs?style=flat-square)](https://img.shields.io/github/license/tomdstanton/pyfgs)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19059429.svg?style=flat-square)](https://doi.org/10.5281/zenodo.19059429)
+[![PyPI](https://img.shields.io/pypi/v/pyfgs.svg?style=flat-square&maxAge=3600&logo=PyPI)](https://pypi.org/project/pyfgs)
+[![Wheel](https://img.shields.io/pypi/wheel/pyfgs.svg?style=flat-square&maxAge=3600)](https://pypi.org/project/pyfgs/#files)
+[![Python Versions](https://img.shields.io/pypi/pyversions/pyfgs.svg?style=flat-square&maxAge=600&logo=python)](https://pypi.org/project/pyfgs/#files)
+[![Python Implementations](https://img.shields.io/pypi/implementation/pyfgs.svg?style=flat-square&maxAge=600&label=impl)](https://pypi.org/project/pyfgs/#files)
+[![Source](https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=2678400&style=flat-square)](https://github.com/tomdstanton/pyfgs/)
+[![Issues](https://img.shields.io/github/issues/tomdstanton/pyfgs.svg?style=flat-square&maxAge=600)](https://github.com/tomdstanton/pyfgs/issues)
+[![Docs](https://img.shields.io/badge/Material_for_MkDocs-526CFE??style=flat-square&maxAge=600)](https://tomdstanton.github.io/pyfgs/)
+[![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/tomdstanton/pyfgs/blob/main/CHANGELOG.md)
+[![Downloads](https://img.shields.io/pypi/dm/pyfgs?style=flat-square&color=303f9f&maxAge=86400&label=downloads)](https://pepy.tech/project/pyfgs)
 
 
 ## 🗺️ Overview
