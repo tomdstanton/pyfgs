@@ -11,19 +11,16 @@ permissions:
 
 jobs:
   build-wheels:
-    name: Build wheels on ${{ matrix.os }} (${{ matrix.target }})
+    name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Linux x86 (Standard servers)
           - os: ubuntu-latest
             target: x86_64
-          # Mac Universal (Builds ONE wheel that supports BOTH Intel and Apple Silicon!)
           - os: macos-14
             target: universal2-apple-darwin
-          # Windows x86
           - os: windows-latest
             target: x86_64
 
@@ -65,6 +62,7 @@ jobs:
     name: Publish to PyPI
     needs: [build-wheels, build-sdist]
     runs-on: ubuntu-latest
+    environment: pypi
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
