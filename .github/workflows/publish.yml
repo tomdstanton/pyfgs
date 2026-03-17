@@ -20,12 +20,9 @@ jobs:
           # Linux x86 (Standard servers)
           - os: ubuntu-latest
             target: x86_64
-          # Mac Intel (Older Macs)
-          - os: macos-13
-            target: x86_64
-          # Mac Apple Silicon (M1/M2/M3)
+          # Mac Universal (Builds ONE wheel that supports BOTH Intel and Apple Silicon!)
           - os: macos-14
-            target: aarch64
+            target: universal2-apple-darwin
           # Windows x86
           - os: windows-latest
             target: x86_64
