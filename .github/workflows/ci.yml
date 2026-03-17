@@ -31,8 +31,8 @@ jobs:
           uv venv
           source .venv/bin/activate
           
-          # Install the package and all dev dependencies (including pytest and pytest-cov)
-          uv pip install -e . --group dev
+          # Install the package and all test dependencies (including pytest and pytest-cov)
+          uv pip install -e . --group test
           
           # Run the test suite
           pytest -v tests/
