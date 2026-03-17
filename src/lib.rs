@@ -11,6 +11,11 @@ use frag_gene_scan_rs::hmm::{self, Global, Local};
 use frag_gene_scan_rs::viterbi::viterbi;
 use frag_gene_scan_rs::dna::{Nuc, count_cg_content, trinucleotide, CODON_CODE, ANTI_CODON_CODE};
 
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
 /// The available sequencing error models for FragGeneScanRs.
 ///
 /// Attributes:
@@ -153,29 +158,24 @@ impl FastqReader {
 }
 
 /// Represents a single predicted Open Reading Frame (ORF).
-///
-/// Example:
-///     ```python
-///     for gene in genes:
-///         print(f"Start: {gene.start}, End: {gene.end}, Strand: {gene.strand}, Frame: {gene.frame}, Score: {gene.score}")
-///     ```
 #[pyclass]
 pub struct Gene {
-    /// int: The 1-based start position of the gene.
     #[pyo3(get)]
     pub start: usize,
-    /// int: The 1-based end position of the gene.
     #[pyo3(get)]
     pub end: usize,
-    /// str: The strand of the gene (1 or -1).
     #[pyo3(get)]
     pub strand: i8,
-    /// int: The reading frame (1, 2, or 3).
     #[pyo3(get)]
     pub frame: usize,
-    /// float: The Viterbi score of the gene prediction.
     #[pyo3(get)]
     pub score: f64,
+
+    // Expose the crate's built-in indel vectors directly!
+    #[pyo3(get)]
+    pub insertions: Vec<usize>,
+    #[pyo3(get)]
+    pub deletions: Vec<usize>,
 
     // Internal fields hidden from Python used for lazy evaluation
     dna_nucs: Vec<Nuc>,
@@ -186,22 +186,16 @@ pub struct Gene {
 #[pymethods]
 impl Gene {
     fn __repr__(&self) -> String {
-        // Updated to print the strand as an integer
         format!("<Gene start={} end={} strand={} frame={} score={:.2}>",
                 self.start, self.end, self.strand, self.frame, self.score)
     }
 
     /// Lazily computes and returns the raw nucleotide sequence as bytes.
     pub fn sequence<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
-        let clean_dna: Vec<Nuc> = self.dna_nucs.iter()
-            .filter(|n| !n.is_insertion())
-            .copied()
-            .collect();
-
         let dna_bytes: Vec<u8> = if self.forward_strand {
-            clean_dna.iter().map(|&n| u8::from(n)).collect()
+            self.dna_nucs.iter().map(|&n| u8::from(n)).collect()
         } else {
-            clean_dna.iter().rev().map(|&n| u8::from(n.rc())).collect()
+            self.dna_nucs.iter().rev().map(|&n| u8::from(n.rc())).collect()
         };
 
         PyBytes::new(py, &dna_bytes)
@@ -209,17 +203,12 @@ impl Gene {
 
     /// Lazily computes and returns the translated amino acid sequence as bytes.
     pub fn translation<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
-        let clean_dna: Vec<Nuc> = self.dna_nucs.iter()
-            .filter(|n| !n.is_insertion())
-            .copied()
-            .collect();
-
         let mut protein_bytes: Vec<u8> = if self.forward_strand {
-            clean_dna.chunks_exact(3)
+            self.dna_nucs.chunks_exact(3)
                 .map(|c| trinucleotide(c).map(|i| CODON_CODE[i]).unwrap_or(b'X'))
                 .collect()
         } else {
-            clean_dna.rchunks_exact(3)
+            self.dna_nucs.rchunks_exact(3)
                 .map(|c| trinucleotide(c).map(|i| ANTI_CODON_CODE[i]).unwrap_or(b'X'))
                 .collect()
         };
@@ -312,14 +301,17 @@ impl GeneFinder {
     fn find_genes(&self, py: Python, header: Vec<u8>, sequence: Vec<u8>) -> PyResult<Vec<Gene>> {
 
         // 1. We skip string mapping and iterate the bytes directly
-        let nuc_seq: Vec<Nuc> = sequence
-            .into_iter()
-            .filter(|b| !b.is_ascii_whitespace())
-            .map(|b| b.to_ascii_uppercase())
+        // Build the Nuc vector directly from Python's memory.
+        // We just eliminated an entire heap allocation step!
+       let nuc_seq: Vec<Nuc> = sequence
+            .iter()
+            .filter(|&&b| !b.is_ascii_whitespace())
+            .map(|&b| b.to_ascii_uppercase())
             .map(Nuc::from)
             .collect();
 
-        let head_bytes = header; // It's already bytes now!
+        // We still need to own the header to pass it to the background thread
+        let head_bytes = header.to_vec();
 
         // 2. Move the owned data into the background thread (detaching the GIL)
         let results = py.detach(move || {
@@ -336,12 +328,16 @@ impl GeneFinder {
 
             prediction.genes.into_iter().map(|g| {
                 Gene {
-                    // Convert 1-based closed to 0-based half-open for Python slicing
                     start: g.start.saturating_sub(1),
                     end: g.end,
                     strand: if g.forward_strand { 1 } else { -1 },
                     frame: g.frame,
                     score: g.score,
+
+                    // Just pass the vectors straight through
+                    insertions: g.inserted,
+                    deletions: g.deleted,
+
                     dna_nucs: g.dna,
                     forward_strand: g.forward_strand,
                     whole_genome: self.whole_genome,

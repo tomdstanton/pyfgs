@@ -11,3 +11,4 @@ crate-type = ["cdylib"]
 pyo3 = { version = "0.28.2", features = ["extension-module"] }
 frag_gene_scan_rs = "1.1.0"
 seq_io = "0.3.2"
+mimalloc = "0.1"

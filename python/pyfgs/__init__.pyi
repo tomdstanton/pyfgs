@@ -89,12 +89,6 @@ class FastqReader:
 
 class Gene:
     """Represents a single predicted Open Reading Frame (ORF).
-    
-    Example:
-        ```python
-        for gene in genes:
-            print(f"Start: {gene.start}, End: {gene.end}, Strand: {gene.strand}, Frame: {gene.frame}, Score: {gene.score}")
-        ```
     """
 
     @property
@@ -120,6 +114,22 @@ class Gene:
     @property
     def score(self) -> float:
         """float: The Viterbi score of the gene prediction."""
+        ...
+
+    @property
+    def insertions(self) -> List[int]:
+        """
+        A list of 0-based indices representing insertion sequencing errors.
+        These are bases that were skipped to maintain the reading frame.
+        """
+        ...
+
+    @property
+    def deletions(self) -> List[int]:
+        """
+        A list of 0-based indices representing insertion sequencing errors.
+        These are bases that were skipped to maintain the reading frame.
+        """
         ...
 
     def sequence(self) -> bytes:

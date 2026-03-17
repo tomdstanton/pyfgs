@@ -11,18 +11,43 @@ a gene prediction model for short and error-prone reads.*
 
 ## 🗺️ Overview
 
-`pyfgs` is a Python module that provides bindings to FragGeneScanRs using
-[maturin](https://maturin.rs/). It directly interacts with the FragGeneScanRs
-internals, which has the following advantages:
+### 🔬 The Biological Edge: The Metagenomic Short-Read Specialist**
 
-- **single dependency**: `pyfgs` is distributed as a Python package, so you
-  can add it as a dependency to your project, and stop worrying about the
-  FragGeneScanRs binary being present on the end-user machine.
-- **no intermediate files**: Everything happens in memory, in a Python object
-  you fully control, so you don't have to invoke the FragGeneScanRs CLI using a
-  sub-process and temporary files. Sequences can be passed directly as
-  strings or bytes, which avoids the overhead of formatting your input to
-  FASTA for FragGeneScanRs.
+- **Reads Through Sequencing Errors:** Unlike Prodigal and Pyrodigal (which are designed for pristine,
+  assembled contigs), `pyfgs` uses a Hidden Markov Model trained specifically on sequencing error profiles (Illumina, 454, Sanger).
+
+- **Native Frameshift Correction:** If a raw read contains an indel, standard tools instantly break the open reading
+  frame and lose the gene. `pyfgs` detects the error, dynamically corrects the reading frame, and translates the
+  protein seamlessly.
+
+- **Granular Indel Tracking:** Every predicted gene exposes native Python lists of exactly where insertions
+  and deletions were detected, allowing for rigorous downstream quality control.
+
+### ⚡️ The Engineering Edge: Bare-Metal Rust in Python
+
+- **GIL-Free Multithreading:** The Rust engine completely detaches the Python Global Interpreter Lock (GIL) during
+  model inference. You can throw massive FASTQ files at it and watch it perfectly saturate every physical core on
+  your machine.
+
+- **True Zero-Copy Memory:** `pyfgs` doesn't waste time copying Python strings into Rust memory. The Rust backend
+  borrows raw byte slices (`&[u8]`) directly from the Python interpreter's heap, resulting in a virtually
+  non-existent memory footprint.
+
+- **Lazy Byte Evaluation:** Bypasses the massive "UTF-8 Tax" of standard bioinformatics wrappers.
+  Translated amino acid sequences and corrected DNA are evaluated lazily—meaning the heavy string math only happens if
+  and when you explicitly request it.
+
+- **No FFI Subprocess Tax:** Instead of dumping massive .faa files to your hard drive and parsing them back into
+  Python, the HMM runs purely in memory and yields native Python objects ready for immediate downstream analysis.
+
+### 🐍 Pythonic Quality of Life
+
+- **0-Based BED Coordinates:** Say goodbye to wrestling with 1-based, fully closed GFF3 coordinates. `pyfgs` natively
+  outputs standard 0-based, half-open intervals ([start, end)), allowing you to slice standard sequence arrays
+  immediately.
+
+- **Drop-in CLI Replacement:** Includes a hyper-fast, multithreaded command-line interface that flawlessly mimics the
+  original FragGeneScan tool but operates at a fraction of the compute time.
 
 
 ## 🔧 Installing
@@ -37,58 +62,62 @@ $ pip install pyfgs
 
 ## Usage
 
-For API usage, please refer to the documentation.
+For API usage, please refer to the [documentation](https://tomdstanton.github.io/pyfgs/api/).
 For CLI usage, type `pyfgs --help`
 
 ```console
-usage: pyfgs <seq> <out> [options]
+usage: pyfgs <seq> [options]
 
 🔗🐍⏭️	PyO3 bindings and Python interface to FragGeneScanRs,
 	a gene prediction model for short and error-prone reads.
 
-Inputs and outputs 💽:
+Input options 💽:
 
-  seq            Sequence file (or '-' for stdin)
-  out            Output file, defaults to stdout
+  seq             Sequence file (or '-' for stdin)
+  -m, --model     Sequence error model (default: complete):
+                   - short1: Illumina sequencing reads with about 0.1% error rate
+                   - short5: Illumina sequencing reads with about 0.5% error rate
+                   - short10: Illumina sequencing reads with about 1% error rate
+                   - sanger5: Sanger sequencing reads with about 0.5% error rate
+                   - sanger10: Sanger sequencing reads with about 1% error rate
+                   - pyro5: 454 pyrosequencing reads with about 0.5% error rate
+                   - pyro10: 454 pyrosequencing reads with about 1% error rate
+                   - pyro30: 454 pyrosequencing reads with about 3% error rate
+                   - complete: Complete genomic sequences or short sequence reads without sequencing error
+  -r, --reads     Force FASTQ parsing (default: False)
 
-Options	⚙️:
+Output options ⚙️:
 
-  -f, --format   Output format (default: faa):
-                  - faa (protein fasta)
-                  - ffn (nucleotide fasta)
-                  - bed
-  -m, --model    Sequence error model (default: complete):
-                  - illumina_1
-                  - illumina_5
-                  - illumina_10
-                  - sanger_5
-                  - sanger_10
-                  - 454_5
-                  - 454_10
-                  - 454_30
-                  - complete
+  -o, --out       Output file (default: stdout)
+  -f, --format    Output format (default: faa):
+                   - faa (protein fasta)
+                   - ffn (nucleotide fasta)
+                   - bed (BED6 format)
 
-Other 🚧:
+Other options 🚧:
 
-  -v, --version  Print version and exit
-  -h, --help     Print help and exit
+  -t, --threads   Number of threads (default: 8)
+  -v, --version   Print version and exit
+  -h, --help      Print help and exit
 ```
 
 
 
 ## 🔖 Citation
 
-For now, please cite the original [FragGeneScanRs paper](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-022-04736-5):
+For now, please cite the original
+[FragGeneScanRs paper](https://bmcbioinformatics.biomedcentral.com/articles/10.1186/s12859-022-04736-5):
 
-> Van der Jeugt, F., Dawyndt, P. & Mesuere, B. FragGeneScanRs: faster gene prediction for short reads. BMC Bioinformatics 23, 198 (2022). https://doi.org/10.1186/s12859-022-04736-5
+> Van der Jeugt, F., Dawyndt, P. & Mesuere, B. FragGeneScanRs: faster gene prediction for short reads.
+BMC Bioinformatics 23, 198 (2022). https://doi.org/10.1186/s12859-022-04736-5
 
 
 ## 💭 Feedback
 
 ### ⚠️ Issue Tracker
 
-Found a bug ? Have an enhancement request ? Head over to the [GitHub issue
-tracker](https://github.com/tomdstanton/pyfgs/issues) if you need to report
+Found a bug ? Have an enhancement request ? Head over to the
+[GitHub issue tracker](https://github.com/tomdstanton/pyfgs/issues) if you need to report
 or ask something. If you are filing in on a bug, please include as much
 information as you can about the issue, and try to recreate the same bug
 in a simple, easily reproducible situation.
@@ -120,4 +149,4 @@ by the original FragGeneScanRs authors [Peter Dawyndt](https://github.com/pdawyn
 [Felix Van der Jeugt](https://github.com/ninewise). It was developed
 by [Tom Stanton](https://github.com/tomdstanton/) during his Post-doc project
 at [Monash University](https://www.monash.edu/medicine/translational/infectious-diseases) in
-the [Wryes Lab](https://https://wyreslab.com/).*
+the [Wryes Lab](https://wyreslab.com/).*
