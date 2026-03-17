@@ -11,7 +11,7 @@ a gene prediction model for short and error-prone reads.*
 
 ## 🗺️ Overview
 
-### 🔬 The Biological Edge: The Metagenomic Short-Read Specialist**
+### 🔬 The Biological Edge: The Metagenomic Short-Read Specialist
 
 - **Reads Through Sequencing Errors:** Unlike Prodigal and Pyrodigal (which are designed for pristine,
   assembled contigs), `pyfgs` uses a Hidden Markov Model trained specifically on sequencing error profiles (Illumina, 454, Sanger).
@@ -60,7 +60,7 @@ This project is supported on Python 3.10 and later.
 $ pip install pyfgs
 ```
 
-## Usage
+## 💻 CLI Usage
 
 For API usage, please refer to the [documentation](https://tomdstanton.github.io/pyfgs/api/).
 For CLI usage, type `pyfgs --help`

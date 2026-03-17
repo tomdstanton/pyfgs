@@ -34,14 +34,22 @@ class Model:
 
 class FastaReader:
     """A memory-efficient FASTA parser yielding (header, sequence).
+
+    The header and sequence are yielded as raw bytes, which avoids any
+    UTF-8 decoding overhead.
     
     Example:
         ```python
         from pyfgs import FastaReader
         
+        # Assuming "genome.fasta" contains:
+        # >seq1
+        # ATGCGT
+        
         reader = FastaReader("genome.fasta")
         for header, sequence in reader:
-            print(f">{header}\\n{sequence}")
+            # header: b'seq1', sequence: b'ATGCGT'
+            print(f">{header.decode()}\\n{sequence.decode()}")
         ```
     """
 
@@ -62,14 +70,24 @@ class FastaReader:
 
 class FastqReader:
     """A memory-efficient FASTQ parser yielding (header, sequence, qualities).
+
+    The header, sequence, and quality scores are yielded as raw bytes, 
+    which avoids any UTF-8 decoding overhead.
     
     Example:
         ```python
         from pyfgs import FastqReader
         
+        # Assuming "reads.fastq" contains:
+        # @read1
+        # ATGCGT
+        # +
+        # IIIIII
+        
         reader = FastqReader("reads.fastq")
         for header, sequence, qualities in reader:
-            print(f"@{header}\\n{sequence}\\n+\\n{qualities}")
+            # header: b'read1', sequence: b'ATGCGT', qualities: b'IIIIII'
+            print(f"@{header.decode()}\\n{sequence.decode()}\\n+\\n{qualities.decode()}")
         ```
     """
 
@@ -89,6 +107,22 @@ class FastqReader:
 
 class Gene:
     """Represents a single predicted Open Reading Frame (ORF).
+
+    `Gene` objects are not created directly, but are returned by
+    `GeneFinder.find_genes`.
+    
+    Example:
+        ```python
+        # Assuming `gene` is a Gene object from a GeneFinder
+        print(f"Found gene: start={gene.start}, end={gene.end}, strand={gene.strand}")
+        
+        # Lazily get the DNA and protein sequence as bytes
+        dna_seq = gene.sequence()
+        protein_seq = gene.translation()
+        
+        print(f"DNA: {dna_seq.decode()}")
+        print(f"Protein: {protein_seq.decode()}")
+        ```
     """
 
     @property
@@ -120,15 +154,16 @@ class Gene:
     def insertions(self) -> List[int]:
         """
         A list of 0-based indices representing insertion sequencing errors.
-        These are bases that were skipped to maintain the reading frame.
+        These are bases in the original sequence that were skipped to maintain
+        the reading frame.
         """
         ...
 
     @property
     def deletions(self) -> List[int]:
         """
-        A list of 0-based indices representing insertion sequencing errors.
-        These are bases that were skipped to maintain the reading frame.
+        A list of 0-based indices representing deletion sequencing errors.
+        These are positions where a gap was inserted to maintain the reading frame.
         """
         ...
 
@@ -147,9 +182,12 @@ class GeneFinder:
     Example:
         ```python
         from pyfgs import GeneFinder, Model
-        
-        finder = GeneFinder(Model.Complete, whole_genome=True)
-        genes = finder.find_genes("seq1", "ATGCGTA...")
+
+        # For complete genomes or error-free reads
+        finder = GeneFinder(Model.Complete)
+
+        # For short, error-prone reads (e.g., Illumina with 0.5% error)
+        finder_short_reads = GeneFinder(Model.Illumina5)
         ```
     """
 
@@ -180,7 +218,18 @@ class GeneFinder:
             
         Example:
             ```python
-            genes = finder.find_genes("seq1", "ATGCGTACGTTAG")
+            from pyfgs import GeneFinder, Model
+            
+            finder = GeneFinder(Model.Complete)
+            header = b"seq1"
+            sequence = b"ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA"
+            
+            genes = finder.find_genes(header, sequence)
+            for gene in genes:
+                print(f"Found gene from {gene.start} to {gene.end} on strand {gene.strand}")
+                # Lazily get the translated protein sequence
+                protein = gene.translation()
+                print(f"Protein: {protein.decode()}")
             ```
         """
         ...

@@ -1,8 +1,15 @@
 name: Publish to PyPI
 
+# This workflow only triggers when you push a git tag that starts with "v"
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
+
+# Required for PyPI Trusted Publishing
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
   build-wheels:
@@ -10,7 +17,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-14] # macos-14 is Apple Silicon (M1/M2/M3)
+        # macos-13 is Intel Mac. Add 'macos-13' to the array above if you want to support older Macs.
 
     steps:
       - uses: actions/checkout@v4
@@ -18,11 +26,9 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          command: build
+          target: all
           args: --release --out dist
-          # Build specifically for the platforms users actually download
           sccache: 'true'
-          manylinux: auto
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
@@ -52,20 +58,15 @@ jobs:
     name: Publish to PyPI
     needs: [build-wheels, build-sdist]
     runs-on: ubuntu-latest
-    # This environment setup is required for PyPI Trusted Publishing
-    environment:
-      name: pypi
-      url: https://pypi.org/p/pyfgs
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
         with:
-          pattern: wheels-*
           path: dist
           merge-multiple: true
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # PyPI Trusted Publishing requires no passwords!
+          skip-existing: true

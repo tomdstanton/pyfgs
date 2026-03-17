@@ -1,4 +1,4 @@
-site_name: pyfgs
+site_name: 🔗🐍⏭️ pyfgs
 repo_url: https://github.com/tomdstanton/pyfgs
 site_url: https://tomdstanton.github.io/pyfgs
 site_description: PyO3 bindings and Python interface to FragGeneScanRs, a gene prediction model for short and error-prone reads.
@@ -9,8 +9,8 @@ copyright: Maintained by <a href="https://tomdstanton.com">tomdstanton</a>.
 watch: [mkdocs.yml, README.md, python]
 
 nav:
-  - Home: index.md
-  - API Reference: api.md
+  - 🏠 Home: index.md
+  - 💻️ API Reference: api.md
 
 plugins:
   - search
