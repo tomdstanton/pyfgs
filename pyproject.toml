@@ -6,15 +6,14 @@ license = {file = "LICENSE"}
 dynamic = ["version"]
 authors = [{ name = "Tom Stanton", email = "tomdstanton@gmail.com" }]
 readme = {file = "README.md", content-type = "text/markdown"}
-keywords = ["bioinformatics", "genome", "orf", "gene", "fraggenescan"]
+keywords = ["bioinformatics", "genome", "orf", "gene", "fraggenescan", "metagenomics", "hmm", "rust", "pyo3"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Operating System :: OS Independent",
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
-    "Programming Language :: Python :: Implementation :: PyPy",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -32,7 +31,7 @@ Homepage = "https://tomdstanton.github.io/pyfgs/"
 Repository = "https://github.com/tomdstanton/pyfgs"
 Documentation = "https://tomdstanton.github.io/pyfgs/"
 "Bug Tracker" = "https://github.com/tomdstanton/pyfgs/issues"
-Changelog= "https://github.com/tomdstanton/pyfgs/blob/master/CHANGELOG.md"
+Changelog= "https://github.com/tomdstanton/pyfgs/blob/main/CHANGELOG.md"
 Coverage = "https://codecov.io/gh/tomdstanton/pyfgs/"
 Builds = "https://github.com/tomdstanton/pyfgs/actions"
 PyPI = "https://pypi.org/project/pyfgs"
@@ -41,7 +40,7 @@ PyPI = "https://pypi.org/project/pyfgs"
 pyfgs = "pyfgs.cli:main"
 
 [dependency-groups]
-test = ["pytest"]
+test = ["pytest", "pytest-cov"]
 docs = [
     "mkdocs",
     "mkdocs-material",

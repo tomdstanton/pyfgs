@@ -57,7 +57,7 @@ This project is supported on Python 3.10 and later.
 `pyfgs` can be installed directly from [PyPI](https://pypi.org/project/pyfgs/):
 
 ```console
-$ pip install pyfgs
+pip install pyfgs
 ```
 
 ## 💻 CLI Usage
