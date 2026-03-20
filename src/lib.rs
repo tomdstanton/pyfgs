@@ -334,9 +334,9 @@ impl GeneFinder {
                     frame: g.frame,
                     score: g.score,
 
-                    // Just pass the vectors straight through
-                    insertions: g.inserted,
-                    deletions: g.deleted,
+                    // Make sure the positions are 0-based
+                    insertions: g.inserted.into_iter().map(|i| i.saturating_sub(1)).collect(),
+                    deletions: g.deleted.into_iter().map(|i| i.saturating_sub(1)).collect(),
 
                     dna_nucs: g.dna,
                     forward_strand: g.forward_strand,
