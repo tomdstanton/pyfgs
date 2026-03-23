@@ -198,7 +198,7 @@ dependencies = [
 
 [[package]]
 name = "pyfgs"
-version = "0.0.1-alpha.1"
+version = "0.0.1-alpha.3"
 dependencies = [
  "frag_gene_scan_rs",
  "mimalloc",

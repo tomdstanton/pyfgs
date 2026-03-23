@@ -17,45 +17,43 @@ a gene prediction model for short and error-prone reads.*
 [![Downloads](https://img.shields.io/pypi/dm/pyfgs?style=flat-square&color=303f9f&maxAge=86400&label=downloads)](https://pepy.tech/project/pyfgs)
 
 
-## 🗺️ Overview
+## 🗺️ Why `pyfgs`?
 
-### 🔬 The Biological Edge: The Metagenomic Short-Read Specialist
+**Built for noisy data**
+Standard ab initio predictors (like Prodigal or Pyrodigal) are fantastic for pristine, fully assembled contigs.
+However, they struggle with raw metagenomic reads or error-prone assemblies because they immediately break the open
+reading frame at the first sign of an indel. pyfgs uses an error-tolerant Hidden Markov Model trained on specific
+sequencing profiles (Illumina, 454, Sanger) to power through these sequencing errors, dynamically correct the reading
+frame, and salvage the translated protein.
 
-- **Reads Through Sequencing Errors:** Unlike Prodigal and Pyrodigal (which are designed for pristine,
-  assembled contigs), `pyfgs` uses a Hidden Markov Model trained specifically on sequencing error profiles (Illumina, 454, Sanger).
+**Native frameshift tracking**
+Instead of just silently stitching broken genes together, pyfgs exposes the exact coordinates of every hallucinated or
+skipped base directly to Python. This allows you to rigorously track structural variants, correctly annotate
+INSDC-compliant pseudogenes, or export exact frameshift coordinates for downstream quality control.
 
-- **Native Frameshift Correction:** If a raw read contains an indel, standard tools instantly break the open reading
-  frame and lose the gene. `pyfgs` detects the error, dynamically corrects the reading frame, and translates the
-  protein seamlessly.
+**No subprocess I/O tax**
+Running standard CLI bioinformatics tools from Python usually requires a heavy I/O penalty: dumping sequences to a
+temporary FASTA file, firing a subprocess, and parsing the text outputs back into memory. pyfgs binds directly to the
+underlying Rust engine. The HMM runs entirely in memory and yields native Python objects ready for immediate analysis.
 
-- **Granular Indel Tracking:** Every predicted gene exposes native Python lists of exactly where insertions
-  and deletions were detected, allowing for rigorous downstream quality control.
+**True multithreading and zero-copy memory**
+pyfgs is designed to process massive datasets efficiently:
 
-### ⚡️ The Engineering Edge: Bare-Metal Rust in Python
+- GIL-Free Inference: The Rust backend completely releases the Python Global Interpreter Lock (GIL) during the heavy
+  HMM math. You can drop the predictor into a standard ThreadPoolExecutor and achieve true parallel processing across
+  all your CPU cores.
 
-- **GIL-Free Multithreading:** The Rust engine completely detaches the Python Global Interpreter Lock (GIL) during
-  model inference. You can throw massive FASTQ files at it and watch it perfectly saturate every physical core on
-  your machine.
+- Zero-Copy Bytes: The engine borrows raw byte slices (&[u8]) directly from Python's memory, bypassing the overhead of
+  copying strings between languages.
 
-- **True Zero-Copy Memory:** `pyfgs` doesn't waste time copying Python strings into Rust memory. The Rust backend
-  borrows raw byte slices (`&[u8]`) directly from the Python interpreter's heap, resulting in a virtually
-  non-existent memory footprint.
+- Lazy Translation: Translating DNA to amino acids is computationally expensive. pyfgs evaluates sequence strings lazily,
+  meaning you only pay the CPU and memory cost of string allocation if you explicitly request the sequence data.
 
-- **Lazy Byte Evaluation:** Bypasses the massive "UTF-8 Tax" of standard bioinformatics wrappers.
-  Translated amino acid sequences and corrected DNA are evaluated lazily—meaning the heavy string math only happens if
-  and when you explicitly request it.
-
-- **No FFI Subprocess Tax:** Instead of dumping massive .faa files to your hard drive and parsing them back into
-  Python, the HMM runs purely in memory and yields native Python objects ready for immediate downstream analysis.
-
-### 🐍 Pythonic Quality of Life
-
-- **0-Based BED Coordinates:** Say goodbye to wrestling with 1-based, fully closed GFF3 coordinates. `pyfgs` natively
-  outputs standard 0-based, half-open intervals ([start, end)), allowing you to slice standard sequence arrays
-  immediately.
-
-- **Drop-in CLI Replacement:** Includes a hyper-fast, multithreaded command-line interface that flawlessly mimics the
-  original FragGeneScan tool but operates at a fraction of the compute time.
+**A Pythonic API**
+Bioinformatics coordinates are notoriously messy. pyfgs outputs standard 0-based, half-open intervals ([start, end)),
+allowing you to slice sequence arrays immediately without wrestling with 1-based GFF3 coordinate math. When you do need
+standardized files, it includes heavily optimized, native-Rust context managers to stream perfectly compliant VCF, BED,
+GFF3, and FASTA files directly to disk without bloating your RAM.
 
 
 ## 🔧 Installing
@@ -161,8 +159,6 @@ def main():
     with open(output_file, "w") as out_handle:
         SeqIO.write(records, out_handle, "genbank")
 
-    print(f"Successfully annotated {len(records)} contigs and saved to {output_file}")
-
 if __name__ == "__main__":
     main()
 ```
@@ -179,32 +175,33 @@ usage: pyfgs <seq> [options]
 
 Input options 💽:
 
-  seq             Sequence file (or '-' for stdin)
-  -m, --model     Sequence error model (default: complete):
-                   - short1: Illumina sequencing reads with about 0.1% error rate
-                   - short5: Illumina sequencing reads with about 0.5% error rate
-                   - short10: Illumina sequencing reads with about 1% error rate
-                   - sanger5: Sanger sequencing reads with about 0.5% error rate
-                   - sanger10: Sanger sequencing reads with about 1% error rate
-                   - pyro5: 454 pyrosequencing reads with about 0.5% error rate
-                   - pyro10: 454 pyrosequencing reads with about 1% error rate
-                   - pyro30: 454 pyrosequencing reads with about 3% error rate
-                   - complete: Complete genomic sequences or short sequence reads without sequencing error
-  -r, --reads     Force FASTQ parsing (default: False)
+  seq                 Sequence file (or '-' for stdin)
+  -m, --model         Sequence error model (default: complete)
+                       - short1: Illumina sequencing reads with about 0.1% error rate
+                       - short5: Illumina sequencing reads with about 0.5% error rate
+                       - short10: Illumina sequencing reads with about 1% error rate
+                       - sanger5: Sanger sequencing reads with about 0.5% error rate
+                       - sanger10: Sanger sequencing reads with about 1% error rate
+                       - pyro5: 454 pyrosequencing reads with about 0.5% error rate
+                       - pyro10: 454 pyrosequencing reads with about 1% error rate
+                       - pyro30: 454 pyrosequencing reads with about 3% error rate
+                       - complete: Complete genomic sequences or short sequence reads without sequencing error
+  -r, --reads         Force FASTQ parsing (Overrides auto-detection)
+  -w, --whole-genome  Strict contiguous ORFs. Disables error-tolerant frameshift detection.
 
 Output options ⚙️:
+  Provide a PATH to save to a file, or use the flag alone to print to stdout.
 
-  -o, --out       Output file (default: stdout)
-  -f, --format    Output format (default: faa):
-                   - faa (protein fasta)
-                   - ffn (nucleotide fasta)
-                   - bed (BED6 format)
+  --faa [PATH]        Output protein FASTA
+  --fna [PATH]        Output nucleotide FASTA
+  --bed [PATH]        Output BED6+1 format
+  --gff [PATH]        Output GFF3 format
 
 Other options 🚧:
 
-  -t, --threads   Number of threads (default: 8)
-  -v, --version   Print version and exit
-  -h, --help      Print help and exit
+  -t, --threads       Number of threads (default: optimal)
+  -v, --version       Print version and exit
+  -h, --help          Print help and exit
 ```
 
 

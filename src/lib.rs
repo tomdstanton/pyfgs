@@ -3,7 +3,6 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 
 use pyo3::prelude::*;
-use pyo3::types::PyType;
 use pyo3::types::PyBytes;
 
 use seq_io::fasta::{Reader, Record as FastaRecord};
@@ -324,29 +323,6 @@ impl GeneFinder {
     ///
     /// This method releases the GIL, allowing for safe multi-threading
     /// across multiple CPU cores.
-    ///
-    /// Args:
-    ///     header (str): The sequence identifier.
-    ///     sequence (str): The raw nucleotide string.
-    ///
-    /// Returns:
-    ///     List[Gene]: A list of predicted Gene objects.
-    ///     
-    /// Example:
-    ///     ```python
-    ///     genes = finder.find_genes("seq1", "ATGCGTACGTTAG")
-    ///     ```
-    /// Predict open reading frames in a given DNA sequence.
-    ///
-    /// This method releases the GIL, allowing for safe multi-threading
-    /// across multiple CPU cores.
-    ///
-    /// Args:
-    ///     header (bytes): The sequence identifier.
-    ///     sequence (bytes): The raw nucleotide bytes.
-    ///
-    /// Returns:
-    ///     List[Gene]: A list of predicted Gene objects.
     fn find_genes(&self, py: Python, header: &[u8], sequence: &[u8]) -> PyResult<Vec<Gene>> {
         // 1. Build the Nuc vector directly from Python's memory.
         let nuc_seq: Vec<Nuc> = sequence
@@ -359,7 +335,7 @@ impl GeneFinder {
         let head_bytes = header.to_vec();
 
         // 2. Run the heavy HMM inference without the GIL
-        let prediction = py.allow_threads(|| {
+        let prediction = py.detach(|| {
             let cg = count_cg_content(&nuc_seq);
             let local_model = &self.locals[cg];
 
@@ -379,8 +355,8 @@ impl GeneFinder {
                 strand: if g.forward_strand { 1 } else { -1 },
                 frame: g.frame,
                 score: g.score,
-                insertions: g.inserted.into_iter().map(|i| i.saturating_sub(1)).collect(),
-                deletions: g.deleted.into_iter().map(|i| i.saturating_sub(1)).collect(),
+                insertions: g.inserted.into_iter().map(|i: usize| i.saturating_sub(1)).collect(),
+                deletions: g.deleted.into_iter().map(|i: usize| i.saturating_sub(1)).collect(),
                 dna_nucs: g.dna,
                 forward_strand: g.forward_strand,
                 whole_genome: self.whole_genome,
@@ -392,7 +368,7 @@ impl GeneFinder {
 }
 
 /// Represents a frameshift mutation detected by the ab initio model.
-#[pyclass(get_all)]
+#[pyclass(get_all, skip_from_py_object)]
 #[derive(Clone, Debug)]
 pub struct Mutation {
     /// 1-based VCF anchored position
