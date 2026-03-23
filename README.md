@@ -20,37 +20,42 @@ a gene prediction model for short and error-prone reads.*
 ## 🗺️ Why `pyfgs`?
 
 **Built for noisy data**
+
 Standard ab initio predictors (like Prodigal or Pyrodigal) are fantastic for pristine, fully assembled contigs.
 However, they struggle with raw metagenomic reads or error-prone assemblies because they immediately break the open
-reading frame at the first sign of an indel. pyfgs uses an error-tolerant Hidden Markov Model trained on specific
+reading frame at the first sign of an indel. `pyfgs` uses an error-tolerant Hidden Markov Model trained on specific
 sequencing profiles (Illumina, 454, Sanger) to power through these sequencing errors, dynamically correct the reading
 frame, and salvage the translated protein.
 
 **Native frameshift tracking**
-Instead of just silently stitching broken genes together, pyfgs exposes the exact coordinates of every hallucinated or
+
+Instead of just silently stitching broken genes together, `pyfgs` exposes the exact coordinates of every hallucinated or
 skipped base directly to Python. This allows you to rigorously track structural variants, correctly annotate
 INSDC-compliant pseudogenes, or export exact frameshift coordinates for downstream quality control.
 
 **No subprocess I/O tax**
+
 Running standard CLI bioinformatics tools from Python usually requires a heavy I/O penalty: dumping sequences to a
-temporary FASTA file, firing a subprocess, and parsing the text outputs back into memory. pyfgs binds directly to the
+temporary FASTA file, firing a subprocess, and parsing the text outputs back into memory. `pyfgs` binds directly to the
 underlying Rust engine. The HMM runs entirely in memory and yields native Python objects ready for immediate analysis.
 
 **True multithreading and zero-copy memory**
-pyfgs is designed to process massive datasets efficiently:
+
+`pyfgs` is designed to process massive datasets efficiently:
 
 - GIL-Free Inference: The Rust backend completely releases the Python Global Interpreter Lock (GIL) during the heavy
   HMM math. You can drop the predictor into a standard ThreadPoolExecutor and achieve true parallel processing across
   all your CPU cores.
 
-- Zero-Copy Bytes: The engine borrows raw byte slices (&[u8]) directly from Python's memory, bypassing the overhead of
+- Zero-Copy Bytes: The engine borrows raw byte slices `(&[u8])` directly from Python's memory, bypassing the overhead of
   copying strings between languages.
 
-- Lazy Translation: Translating DNA to amino acids is computationally expensive. pyfgs evaluates sequence strings lazily,
-  meaning you only pay the CPU and memory cost of string allocation if you explicitly request the sequence data.
+- Lazy Translation: Translating DNA to amino acids is computationally expensive. `pyfgs` evaluates sequence strings
+  lazily, meaning you only pay the CPU and memory cost of string allocation if you explicitly request the sequence data.
 
 **A Pythonic API**
-Bioinformatics coordinates are notoriously messy. pyfgs outputs standard 0-based, half-open intervals ([start, end)),
+
+Bioinformatics coordinates are notoriously messy. `pyfgs` outputs standard 0-based, half-open intervals ([start, end)),
 allowing you to slice sequence arrays immediately without wrestling with 1-based GFF3 coordinate math. When you do need
 standardized files, it includes heavily optimized, native-Rust context managers to stream perfectly compliant VCF, BED,
 GFF3, and FASTA files directly to disk without bloating your RAM.
