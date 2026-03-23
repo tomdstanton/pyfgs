@@ -68,9 +68,107 @@ This project is supported on Python 3.10 and later.
 pip install pyfgs
 ```
 
-## 💻 CLI Usage
+## 💻 Usage
 
-For API usage, please refer to the [documentation](https://tomdstanton.github.io/pyfgs/api/).
+### API Usage
+For full API usage, please refer to the [documentation](https://tomdstanton.github.io/pyfgs/api/).
+
+```python
+import concurrent.futures
+import pyfgs
+from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
+from Bio.SeqFeature import SeqFeature, FeatureLocation
+from Bio import SeqIO
+
+def process_contig(header_bytes: bytes, seq_bytes: bytes, finder: pyfgs.GeneFinder):
+    """
+    Worker function to find genes.
+    Because find_genes() drops the GIL, this runs in true parallel.
+    """
+    genes = finder.find_genes(header_bytes, seq_bytes)
+    return header_bytes, seq_bytes, genes
+
+def main():
+    # 1. Initialize the GeneFinder
+    # We use the 'Complete' model for high-quality assemblies, but strictly
+    # set whole_genome=False to force the HMM to hunt for frameshifts.
+    finder = pyfgs.GeneFinder(pyfgs.Model.Complete, whole_genome=False)
+
+    # 2. Stream the genome using the zero-allocation Rust FastaReader
+    reader = pyfgs.FastaReader("bacterial_assembly.fasta")
+
+    results = []
+
+    # 3. Process all contigs concurrently
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Submit all contigs to the thread pool
+        futures = [
+            executor.submit(process_contig, header, seq, finder)
+            for header, seq in reader
+        ]
+
+        # Gather results as they complete
+        for future in concurrent.futures.as_completed(futures):
+            results.append(future.result())
+
+    # 4. Format into INSDC-compliant GenBank records
+    records = []
+    for header_bytes, seq_bytes, genes in results:
+        header_str = header_bytes.decode('utf-8')
+        record = SeqRecord(
+            Seq(seq_bytes.decode('utf-8')),
+            id=header_str,
+            name=header_str,
+            description="Annotated by pyfgs"
+        )
+
+        for i, gene in enumerate(genes):
+            # Query the Rust backend for structural variants
+            mutations = gene.mutations(seq_bytes)
+
+            # INSDC Standard: Frameshifted ORFs cannot be 'CDS', must be 'pseudogene'
+            feature_type = "pseudogene" if mutations else "CDS"
+
+            qualifiers = {
+                "source": "pyfgs",
+                "inference": "ab initio prediction:pyfgs",
+                "ID": f"{header_str}_FGS_{i+1}"
+            }
+
+            if mutations:
+                qualifiers["pseudogene"] = ["unknown"]
+                notes = []
+                for mut in mutations:
+                    mut_name = "insertion" if mut.mut_type == "ins" else "deletion"
+                    # Include our Snippy-style variant notation
+                    notes.append(f"Frameshift {mut_name} at pos {mut.pos} (codon {mut.codon_idx}). {mut.annotation}")
+                qualifiers["note"] = notes
+            else:
+                # Only strictly intact CDS features receive a translation qualifier
+                qualifiers["translation"] = [gene.translation().decode('utf-8')]
+
+            # Biopython's FeatureLocation is natively 0-based and half-open,
+            # mapping perfectly to our Gene.start and Gene.end!
+            location = FeatureLocation(gene.start, gene.end, strand=gene.strand)
+            feature = SeqFeature(location=location, type=feature_type, qualifiers=qualifiers)
+            record.features.append(feature)
+
+        records.append(record)
+
+    # 5. Export to GenBank
+    output_file = "annotated_genome.gbk"
+    with open(output_file, "w") as out_handle:
+        SeqIO.write(records, out_handle, "genbank")
+
+    print(f"Successfully annotated {len(records)} contigs and saved to {output_file}")
+
+if __name__ == "__main__":
+    main()
+```
+
+### CLI Usage
+
 For CLI usage, type `pyfgs --help`
 
 ```console
@@ -108,7 +206,6 @@ Other options 🚧:
   -v, --version   Print version and exit
   -h, --help      Print help and exit
 ```
-
 
 
 ## 🔖 Citation
