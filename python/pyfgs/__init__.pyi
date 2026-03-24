@@ -218,12 +218,12 @@ class GeneFinder:
         >>>
         >>> # Keep whole_genome=False to allow pseudogene/frameshift detection
         >>> finder = pyfgs.GeneFinder(pyfgs.Model.Complete, whole_genome=False)
-        >>> genes = finder.find_genes(record.id.encode(), str(record.seq).encode())
+        >>> genes = finder.find_genes(record.seq._data)
     """
 
     def __init__(self, model: Model, whole_genome: Optional[bool] = None) -> None: ...
 
-    def find_genes(self, header: bytes, sequence: bytes) -> List[Gene]:
+    def find_genes(self, sequence: bytes) -> List[Gene]:
         """
         Predicts open reading frames in a given DNA sequence.
 
@@ -231,7 +231,6 @@ class GeneFinder:
         multi-threading across multiple CPU cores.
 
         Args: 
-            header (bytes): The sequence identifier/contig name.
             sequence (bytes): The raw nucleotide sequence.
 
         Returns: 
