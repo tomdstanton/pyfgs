@@ -136,7 +136,7 @@ def _VcfFormatter(header, seq, genes) -> bytes:
 
 
 # Helper functions -----------------------------------------------------------------------------------------------------
-def _get_optimal_threads():
+def _get_optimal_threads() -> int:
     if hasattr(os, "process_cpu_count"):
         return os.process_cpu_count() or 1
     if hasattr(os, "sched_getaffinity"):
@@ -144,7 +144,7 @@ def _get_optimal_threads():
     return os.cpu_count() or 1
 
 
-def _is_fastq(seq_arg, force_reads_flag):
+def _is_fastq(seq_arg, force_reads_flag) -> bool:
     """Robust FASTQ detection via explicit flag, file extension, or byte sniffing."""
     if force_reads_flag:
         return True
@@ -256,12 +256,11 @@ def main():
     # 3. Execution Pipeline --------------------------------------------------------------------------------------------
     def _process_record(record):
         header, seq = record[0], record[1]
-        genes = finder.find_genes(header, seq)
-
+        genes = finder.find_genes(seq) 
         if not genes:
             return None
-
         return {fmt: formats_map[fmt](header, seq, genes) for fmt in active_outputs}
+    
 
     try:
         with ThreadPoolExecutor(max_workers=args.threads) as executor:
