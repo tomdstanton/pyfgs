@@ -84,85 +84,67 @@ from Bio.SeqRecord import SeqRecord
 from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio import SeqIO
 
-def process_contig(header_bytes: bytes, seq_bytes: bytes, finder: pyfgs.GeneFinder):
-    """
-    Worker function to find genes.
-    Because find_genes() drops the GIL, this runs in true parallel.
-    """
-    genes = finder.find_genes(header_bytes, seq_bytes)
-    return header_bytes, seq_bytes, genes
-
 def main():
     # 1. Initialize the GeneFinder
-    # We use the 'Complete' model for high-quality assemblies, but strictly
-    # set whole_genome=False to force the HMM to hunt for frameshifts.
+    # Set whole_genome=False to force the HMM to hunt for frameshifts.
     finder = pyfgs.GeneFinder(pyfgs.Model.Complete, whole_genome=False)
 
-    # 2. Stream the genome using the zero-allocation Rust FastaReader
-    reader = pyfgs.FastaReader("bacterial_assembly.fasta")
-
-    results = []
-
-    # 3. Process all contigs concurrently
+    # 2. Parse the genome into memory 
+    # (Safe for assemblies! For massive raw read FASTQs, use an itertools chunker instead)
+    contigs = list(pyfgs.FastaReader("bacterial_assembly.fasta"))
+    seqs = [seq for _, seq in contigs]
+    
+    # 3. Process concurrently
+    # The GIL is released, and map perfectly preserves our sequence order!
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Submit all contigs to the thread pool
-        futures = [
-            executor.submit(process_contig, header, seq, finder)
-            for header, seq in reader
-        ]
-
-        # Gather results as they complete
-        for future in concurrent.futures.as_completed(futures):
-            results.append(future.result())
+        all_genes = list(executor.map(finder.find_genes, seqs))
 
     # 4. Format into INSDC-compliant GenBank records
     records = []
-    for header_bytes, seq_bytes, genes in results:
+    for (header_bytes, seq_bytes), genes in zip(contigs, all_genes):
         header_str = header_bytes.decode('utf-8')
         record = SeqRecord(
-            Seq(seq_bytes.decode('utf-8')),
-            id=header_str,
-            name=header_str,
+            Seq(seq_bytes.decode('utf-8')), 
+            id=header_str, 
+            name=header_str, 
             description="Annotated by pyfgs"
         )
-
+        
         for i, gene in enumerate(genes):
             # Query the Rust backend for structural variants
             mutations = gene.mutations(seq_bytes)
-
+            
             # INSDC Standard: Frameshifted ORFs cannot be 'CDS', must be 'pseudogene'
             feature_type = "pseudogene" if mutations else "CDS"
-
+            
             qualifiers = {
                 "source": "pyfgs",
                 "inference": "ab initio prediction:pyfgs",
                 "ID": f"{header_str}_FGS_{i+1}"
             }
-
+            
             if mutations:
                 qualifiers["pseudogene"] = ["unknown"]
-                notes = []
-                for mut in mutations:
-                    mut_name = "insertion" if mut.mut_type == "ins" else "deletion"
-                    # Include our Snippy-style variant notation
-                    notes.append(f"Frameshift {mut_name} at pos {mut.pos} (codon {mut.codon_idx}). {mut.annotation}")
-                qualifiers["note"] = notes
+                qualifiers["note"] = [
+                    f"Frameshift {'insertion' if mut.mut_type == 'ins' else 'deletion'} "
+                    f"at pos {mut.pos} (codon {mut.codon_idx}). {mut.annotation}"
+                    for mut in mutations
+                ]
             else:
                 # Only strictly intact CDS features receive a translation qualifier
                 qualifiers["translation"] = [gene.translation().decode('utf-8')]
-
-            # Biopython's FeatureLocation is natively 0-based and half-open,
+            
+            # Biopython's FeatureLocation is natively 0-based and half-open, 
             # mapping perfectly to our Gene.start and Gene.end!
             location = FeatureLocation(gene.start, gene.end, strand=gene.strand)
             feature = SeqFeature(location=location, type=feature_type, qualifiers=qualifiers)
             record.features.append(feature)
-
+        
         records.append(record)
 
     # 5. Export to GenBank
-    output_file = "annotated_genome.gbk"
-    with open(output_file, "w") as out_handle:
-        SeqIO.write(records, out_handle, "genbank")
+    SeqIO.write(records, "annotated_genome.gbk", "genbank")
+    print(f"Successfully annotated {len(records)} contigs!")
 
 if __name__ == "__main__":
     main()
