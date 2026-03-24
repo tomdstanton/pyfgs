@@ -323,8 +323,14 @@ impl GeneFinder {
     ///
     /// This method releases the GIL, allowing for safe multi-threading
     /// across multiple CPU cores.
-    fn find_genes(&self, py: Python, header: &[u8], sequence: &[u8]) -> PyResult<Vec<Gene>> {
-        // 1. Build the Nuc vector directly from Python's memory.
+    /// Predict open reading frames in a given DNA sequence.
+    ///
+    /// Args:
+    ///     sequence (bytes): The raw nucleotide bytes.
+    ///
+    /// Returns:
+    ///     List[Gene]: A list of predicted Gene objects.
+    fn find_genes(&self, py: Python, sequence: &[u8]) -> PyResult<Vec<Gene>> {
         let nuc_seq: Vec<Nuc> = sequence
             .iter()
             .filter(|&&b| !b.is_ascii_whitespace())
@@ -332,17 +338,16 @@ impl GeneFinder {
             .map(Nuc::from)
             .collect();
 
-        let head_bytes = header.to_vec();
-
         // 2. Run the heavy HMM inference without the GIL
         let prediction = py.detach(|| {
             let cg = count_cg_content(&nuc_seq);
             let local_model = &self.locals[cg];
 
+            // Pass an empty vector to satisfy the crate's signature without allocating memory
             viterbi(
                 &self.global,
                 local_model,
-                head_bytes,
+                Vec::new(), 
                 nuc_seq,
                 self.whole_genome
             )
@@ -355,8 +360,8 @@ impl GeneFinder {
                 strand: if g.forward_strand { 1 } else { -1 },
                 frame: g.frame,
                 score: g.score,
-                insertions: g.inserted.into_iter().map(|i: usize| i.saturating_sub(1)).collect(),
-                deletions: g.deleted.into_iter().map(|i: usize| i.saturating_sub(1)).collect(),
+                insertions: g.inserted.into_iter().map(|i| i.saturating_sub(1)).collect(),
+                deletions: g.deleted.into_iter().map(|i| i.saturating_sub(1)).collect(),
                 dna_nucs: g.dna,
                 forward_strand: g.forward_strand,
                 whole_genome: self.whole_genome,
