@@ -28,7 +28,7 @@ class Model:
         Pyro454_30: 454 pyrosequencing reads with ~3% error rate.
         Complete: Complete genomic sequences without expected sequencing errors.
 
-    Example:
+    Examples:
         >>> import pyfgs
         >>> model = pyfgs.Model.Complete
     """
@@ -53,7 +53,7 @@ class FastaReader(Iterator[Tuple[bytes, bytes]]):
     Yields:
         Tuple[bytes, bytes]: A tuple containing the header and sequence as raw bytes.
 
-    Example:
+    Examples:
         >>> from pyfgs import FastaReader
         >>> reader = FastaReader("genome.fna")
         >>> for header, sequence in reader:
@@ -190,7 +190,7 @@ class Gene:
         Returns:
             List[Mutation]: A list of structured mutation objects.
 
-        Example:
+        Examples:
             >>> seq_bytes = str(record.seq).encode()
             >>> for gene in genes:
             ...     for mut in gene.mutations(seq_bytes):
@@ -210,7 +210,7 @@ class GeneFinder:
             or pseudogenes. If True, strictly enforces contiguous reading frames.
             Defaults to True if `Model.Complete` is used, otherwise False.
 
-    Example:
+    Examples:
         >>> from Bio import SeqIO
         >>> import pyfgs
         >>> record = SeqIO.read("genome.fasta", "fasta")
@@ -249,7 +249,7 @@ class VcfWriter:
     Args:
         output_path (str): The destination file path.
 
-    Example:
+    Examples:
         >>> with pyfgs.VcfWriter("variants.vcf") as vcf:
         ...     vcf.write_record(genes, record.id, str(record.seq).encode())
     """
