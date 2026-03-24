@@ -17,7 +17,7 @@ class Model:
     The model alters the transition probabilities to account for expected
     sequencing error rates, making it more or less forgiving of frameshifts.
 
-    Attributes:
+    Attributes: 
         Illumina1: Illumina reads with ~0.1% error rate.
         Illumina5: Illumina reads with ~0.5% error rate.
         Illumina10: Illumina reads with ~1% error rate.
@@ -28,9 +28,10 @@ class Model:
         Pyro454_30: 454 pyrosequencing reads with ~3% error rate.
         Complete: Complete genomic sequences without expected sequencing errors.
 
-    Examples:
+    Examples: 
         >>> import pyfgs
         >>> model = pyfgs.Model.Complete
+
     """
     Illumina1: 'Model'
     Illumina5: 'Model'
@@ -47,13 +48,13 @@ class FastaReader(Iterator[Tuple[bytes, bytes]]):
     """
     A fast, memory-efficient FASTA parser implemented in Rust.
 
-    Args:
+    Args: 
         path (str): The file path to the FASTA file.
 
-    Yields:
+    Yields: 
         Tuple[bytes, bytes]: A tuple containing the header and sequence as raw bytes.
 
-    Examples:
+    Examples: 
         >>> from pyfgs import FastaReader
         >>> reader = FastaReader("genome.fna")
         >>> for header, sequence in reader:
@@ -71,10 +72,10 @@ class FastqReader(Iterator[Tuple[bytes, bytes, bytes]]):
     """
     A fast, memory-efficient FASTQ parser implemented in Rust.
 
-    Args:
+    Args: 
         path (str): The file path to the FASTQ file.
 
-    Yields:
+    Yields: 
         Tuple[bytes, bytes, bytes]: A tuple containing the header, sequence,
         and Phred quality string as raw bytes.
     """
@@ -90,7 +91,7 @@ class Mutation:
     """
     Represents a frameshift mutation (insertion or deletion) detected by the HMM.
 
-    Attributes:
+    Attributes: 
         pos (int): The 0-based index of the mutation in the global assembly.
                    (Note: This is mathematically identical to the 1-based VCF anchor position).
         mut_type (str): Either 'ins' (extra base in assembly) or 'del' (missing base).
@@ -123,7 +124,7 @@ class Gene:
     """
     Represents a single predicted Open Reading Frame (ORF).
 
-    Attributes:
+    Attributes: 
         start (int): The 0-based, inclusive start coordinate.
         end (int): The 0-based, exclusive end coordinate.
         strand (int): The strand of the feature (1 for forward, -1 for reverse).
@@ -154,7 +155,7 @@ class Gene:
     @property
     def deletions(self) -> List[int]: ...
 
-    def sequence(self) -> bytes:
+    def sequence(self) -> bytes: 
         """
         Retrieves the raw nucleotide sequence of the predicted gene.
 
@@ -162,19 +163,19 @@ class Gene:
         reverse-complemented. If the gene contains frameshifts, the returned
         sequence represents the conceptual (corrected) HMM path.
 
-        Returns:
+        Returns: 
             bytes: The DNA sequence.
         """
         ...
 
-    def translation(self) -> bytes:
+    def translation(self) -> bytes: 
         """
         Translates the predicted gene into an amino acid sequence.
 
         Alternative start codons (e.g., GTG, TTG) are automatically translated
         to Methionine (M) if the model was initialized with `whole_genome=True`.
 
-        Returns:
+        Returns: 
             bytes: The amino acid sequence.
         """
         ...
@@ -183,16 +184,16 @@ class Gene:
         """
         Extracts structural variant objects for any predicted frameshifts.
 
-        Args:
+        Args: 
             sequence (bytes): The raw parent contig sequence, used to determine
                 VCF anchored alleles.
 
-        Returns:
+        Returns: 
             List[Mutation]: A list of structured mutation objects.
 
-        Examples:
+        Examples: 
             >>> seq_bytes = str(record.seq).encode()
-            >>> for gene in genes:
+            >>> for gene in genes: 
             ...     for mut in gene.mutations(seq_bytes):
             ...         print(f"Frameshift at codon {mut.codon_idx}: {mut.annotation}")
         """
@@ -203,14 +204,14 @@ class GeneFinder:
     """
     The core ab initio gene prediction engine.
 
-    Args:
+    Args: 
         model (Model): The sequencing error model to use.
         whole_genome (bool, optional): If False, the HMM permits internal
             frameshifts (insertions/deletions) typical of sequencing errors
             or pseudogenes. If True, strictly enforces contiguous reading frames.
             Defaults to True if `Model.Complete` is used, otherwise False.
 
-    Examples:
+    Examples: 
         >>> from Bio import SeqIO
         >>> import pyfgs
         >>> record = SeqIO.read("genome.fasta", "fasta")
@@ -229,11 +230,11 @@ class GeneFinder:
         This method releases the Python GIL, allowing for safe, lock-free
         multi-threading across multiple CPU cores.
 
-        Args:
+        Args: 
             header (bytes): The sequence identifier/contig name.
             sequence (bytes): The raw nucleotide sequence.
 
-        Returns:
+        Returns: 
             List[Gene]: A list of predicted Gene objects.
         """
         ...
@@ -246,10 +247,10 @@ class VcfWriter:
     Automatically translates structural frameshifts detected by the HMM into
     anchored VCF variants with SnpEff-compliant `ANN` fields.
 
-    Args:
+    Args: 
         output_path (str): The destination file path.
 
-    Examples:
+    Examples: 
         >>> with pyfgs.VcfWriter("variants.vcf") as vcf:
         ...     vcf.write_record(genes, record.id, str(record.seq).encode())
     """
@@ -265,7 +266,7 @@ class VcfWriter:
         """
         Writes the frameshift variants for a single contig to the VCF buffer.
 
-        Args:
+        Args: 
             genes (List[Gene]): The list of predicted Gene objects.
             header (str): The chromosome/contig ID (used for the #CHROM column).
             sequence (bytes): The raw parent nucleotide sequence.
@@ -280,7 +281,7 @@ class BedWriter:
     Outputs a BED6+1 format, where the 7th column contains a VCF-style INFO
     string detailing any frameshifts present in the feature.
 
-    Args:
+    Args: 
         output_path (str): The destination file path.
     """
 
@@ -295,7 +296,7 @@ class BedWriter:
         """
         Writes the BED intervals for a single contig to the buffer.
 
-        Args:
+        Args: 
             genes (List[Gene]): The list of predicted Gene objects.
             header (str): The chromosome/contig ID.
             sequence (bytes): The raw parent nucleotide sequence.
@@ -311,7 +312,7 @@ class Gff3Writer:
     Genes containing frameshifts are flagged as `pseudogene=unknown` to ensure
     compliance with downstream translation tools (like Prokka or Bakta).
 
-    Args:
+    Args: 
         output_path (str): The destination file path.
     """
 
@@ -326,7 +327,7 @@ class Gff3Writer:
         """
         Writes the GFF3 annotations for a single contig to the buffer.
 
-        Args:
+        Args: 
             genes (List[Gene]): The list of predicted Gene objects.
             header (str): The chromosome/contig ID.
             sequence (bytes): The raw parent nucleotide sequence.
@@ -340,7 +341,7 @@ class FnaWriter:
 
     Outputs raw, non-wrapped byte streams for maximum parsing speed by downstream tools.
 
-    Args:
+    Args: 
         output_path (str): The destination file path.
     """
 
@@ -355,7 +356,7 @@ class FnaWriter:
         """
         Writes the conceptual nucleotide sequences for a single contig.
 
-        Args:
+        Args: 
             genes (List[Gene]): The list of predicted Gene objects.
             header (str): The chromosome/contig ID.
         """
@@ -368,7 +369,7 @@ class FaaWriter:
 
     Outputs raw, non-wrapped byte streams of the translated proteins.
 
-    Args:
+    Args: 
         output_path (str): The destination file path.
     """
 
@@ -383,7 +384,7 @@ class FaaWriter:
         """
         Writes the translated amino acid sequences for a single contig.
 
-        Args:
+        Args: 
             genes (List[Gene]): The list of predicted Gene objects.
             header (str): The chromosome/contig ID.
         """
