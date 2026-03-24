@@ -201,6 +201,7 @@ Output options ⚙️:
   --fna [PATH]        Output nucleotide FASTA
   --bed [PATH]        Output BED6+1 format
   --gff [PATH]        Output GFF3 format
+  --vcf [PATH]        Output VCF v4.2 format
 
 Other options 🚧:
 
