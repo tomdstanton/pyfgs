@@ -107,6 +107,34 @@ def _GffFormatter(header, seq, genes) -> bytes:
     return b"".join(lines)
 
 
+def _VcfFormatter(header, seq, genes) -> bytes:
+    lines = []
+    for n, gene in enumerate(genes, start=1):
+        muts = gene.mutations(seq)
+        if not muts:
+            continue
+            
+        gene_id = b"%s_FGS_%d" % (header, n)
+        
+        for m in muts:
+            # Convert strings to bytes for fast I/O
+            mut_type = b"insertion" if m.mut_type == "ins" else b"deletion"
+            ref = m.ref_allele.encode()
+            alt = m.alt_allele.encode()
+            ann = m.annotation.encode()
+            
+            # Build the SnpEff compliant ANN string
+            info = b"TYPE=frameshift_%s;GENE=%s;CODON=%d;ANN=%s|frameshift_variant|HIGH|%s|%s|transcript|%s|protein_coding|%d/1|%s" % (
+                mut_type, gene_id, m.codon_idx, alt, gene_id, gene_id, gene_id, m.codon_idx, ann
+            )
+            
+            lines.append(b"%s\t%d\t.\t%s\t%s\t.\tPASS\t%s\n" % (
+                header, m.pos, ref, alt, info
+            ))
+            
+    return b"".join(lines)
+
+
 # Helper functions -----------------------------------------------------------------------------------------------------
 def _get_optimal_threads():
     if hasattr(os, "process_cpu_count"):
@@ -173,6 +201,7 @@ def main():
     out_group.add_argument("--fna", nargs='?', const='-', default=None, metavar="PATH", help="Output nucleotide FASTA")
     out_group.add_argument("--bed", nargs='?', const='-', default=None, metavar="PATH", help="Output BED6+1 format")
     out_group.add_argument("--gff", nargs='?', const='-', default=None, metavar="PATH", help="Output GFF3 format")
+    out_group.add_argument("--vcf", nargs='?', const='-', default=None, metavar="PATH", help="Output VCF v4.2 format")
 
     other_group = parser.add_argument_group("Other options 🚧", "")
     other_group.add_argument("-t", "--threads", type=int, default=_get_optimal_threads(), metavar="",
@@ -183,7 +212,7 @@ def main():
     args = parser.parse_args()
 
     # 1. Output Resolution & Validation --------------------------------------------------------------------------------
-    formats_map = {"faa": _FaaFormatter, "fna": _FnaFormatter, "bed": _BedFormatter, "gff": _GffFormatter}
+    formats_map = {"faa": _FaaFormatter, "fna": _FnaFormatter, "bed": _BedFormatter, "gff": _GffFormatter, "vcf": _VcfFormatter}
 
     active_outputs = {fmt: getattr(args, fmt) for fmt in formats_map if getattr(args, fmt) is not None}
 
@@ -199,11 +228,19 @@ def main():
     for fmt, path in active_outputs.items():
         handle = sys.stdout.buffer if path == "-" else open(path, "wb")
         out_files[fmt] = handle
-
+        
+        # Inject standard headers for tabular formats
         if fmt == "bed":
             handle.write(b"# source=ab initio prediction: pyfgs\n# CHROM\tSTART\tEND\tNAME\tSCORE\tSTRAND\tMUTATIONS\n")
         elif fmt == "gff":
             handle.write(b"##gff-version 3\n#source-ontology=ab initio prediction: pyfgs\n")
+        elif fmt == "vcf":
+            handle.write(b"##fileformat=VCFv4.2\n##source=pyfgs_ab_initio\n"
+                         b"##INFO=<ID=TYPE,Number=1,Type=String,Description=\"Type of sequence discrepancy\">\n"
+                         b"##INFO=<ID=GENE,Number=1,Type=String,Description=\"Predicted Gene ID\">\n"
+                         b"##INFO=<ID=CODON,Number=1,Type=Integer,Description=\"1-based codon index of the frameshift\">\n"
+                         b"##INFO=<ID=ANN,Number=.,Type=String,Description=\"Functional annotations: 'Allele | Annotation | Annotation_Impact | Gene_Name | Gene_ID | Feature_Type | Feature_ID | Transcript_Biotype | Rank | HGVS.c'\">\n"
+                         b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n")
 
     # 2. Init Engine & Input -------------------------------------------------------------------------------------------
     finder = GeneFinder(_MODEL_MAP[args.model], whole_genome=args.whole_genome)
