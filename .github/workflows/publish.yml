@@ -14,7 +14,7 @@ jobs:
       contents: read   # REQUIRED: Allows actions/checkout to read the repo
       
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Assert Tag matches Cargo.toml
         run: |
@@ -37,7 +37,7 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -56,7 +56,7 @@ jobs:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1

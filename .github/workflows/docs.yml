@@ -25,7 +25,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -44,7 +44,7 @@ jobs:
           cp CONTRIBUTING.md docs/contributing.md
 
       - name: Fetch Benchmark Dashboard
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         continue-on-error: true
         with:
           ref: benchmark-data
