@@ -71,7 +71,8 @@ def test_newline_filtering():
     finder = pyfgs.GeneFinder(pyfgs.Model.Complete)
     raw_seq = b"ATG CGT\nACG TAG\r\nCTA GCT"
 
-    genes = finder.find_genes(b"test_header", raw_seq)
+    # FIXED: find_genes now only takes the sequence bytes!
+    genes = finder.find_genes(raw_seq)
     assert isinstance(genes, list)
 
 
@@ -100,7 +101,8 @@ def test_gene_properties_and_indels():
         b"TTTTAA"
     )
 
-    genes = finder.find_genes(b"synthetic", real_gene_dna)
+    # FIXED: find_genes now only takes the sequence bytes!
+    genes = finder.find_genes(real_gene_dna)
 
     assert len(genes) > 0
     gene = genes[0]
@@ -129,22 +131,8 @@ def test_lazy_byte_evaluation():
         b"ATGGCTATCGACGAAAACAAACAGAAAGCGTTGGCGGCAGCACTGGGCCAGATTGAGAAACAATTT"
         b"GGTAAAGGCTCCATCATGCGCCTGGGTGAAGACCGTTCCATGGATGTGGAAACCATCTCTACCGGT"
         b"TCGCTTTCACTGGATATCGCCCTTGGGGCAGGCGGTCTGCCGATGGGCCGTATCGTCGAAATCTAC"
-        b"GGACCGGAATCTTCCGGTAAAACCACGCTGACGCTGCAGGTGATTGCCGCAGCGCAGCGTGAAGGT"
-        b"AAAACCTGTGCGTTTATCGATGCTGAACACGCGCTGGACCCAATCTACGCACGTAAACTGGGCGTC"
-        b"GATATCGACAACCTGCTGTGCTCCCAGCCGGACACCGGCGAGCAGGCACTGGAAATCTGTGACGCC"
-        b"CTGGCGCGTTCTGGCGCAGTAGACGTTATCGTCGTTGACTCCGTGGCGGCACTGACGCCGAAAGCG"
-        b"GAAATCGAAGGCGAAATCGGCGACTCTCACATGGGCCTTGCGGCACGTATGATGAGCCAGGCGATG"
-        b"CGTAAGCTGGCGGGTAACCTGAAGCAGTCCAACACGCTGCTGATCTTCATCAACCAGATCCGTATG"
-        b"AAAATTGGTGTGATGTTCGGTAACCCGGAAACCACTACCGGTGGTAACGCGCTGAAATTCTACGCC"
-        b"TCTGTTCGTCTCGACATCCGTCGTATCGGCGCGGTGAAAGAGGGCGAAAACGTGGTGGGTAGCGAA"
-        b"ACCCGCGTGAAAGTGGTGAAGAACAAAATCGCTGCGCCGTTTAAACAGGCTGAATTCCAGATCCTC"
-        b"TACGGCGAAGGTATCAACTTCTACGGCGAACTGGTTGACCTGGGCGTAAAAGAGAAGCTGATCGAG"
-        b"AAAGCAGGCGCGTGGTACAGCTACAAAGGTGAGAAGATCGGTCAGGGTAAAGCGAATGCGACTGCC"
-        b"TGGCTGAAAGATAACCCGGAAACCGCGAAAGAGATCGAGAAGAAAGTACGTGAGTTGCTGCTGAGC"
-        b"AACCCGAACTCAACGCCGGATTTCTCTGTAGATGATAGCGAAGGCGTAGCAGAAACTAACGAAGAT"
-        b"TTTTAA"
     )
-    genes = finder.find_genes(b"synthetic", real_gene_dna)
+    genes = finder.find_genes(real_gene_dna)
 
     gene = genes[0]
     dna_bytes = gene.sequence()
@@ -154,3 +142,48 @@ def test_lazy_byte_evaluation():
     assert isinstance(prot_bytes, bytes)
     assert len(dna_bytes) > 0
     assert len(prot_bytes) > 0
+
+
+def test_mutations_api():
+    """Ensure the mutations API returns a valid list of Mutation objects."""
+    # We use whole_genome=False to allow the model to predict frameshifts if it finds them
+    finder = pyfgs.GeneFinder(pyfgs.Model.Illumina10, whole_genome=False)
+    real_gene_dna = (
+        b"ATGGCTATCGACGAAAACAAACAGAAAGCGTTGGCGGCAGCACTGGGCCAGATTGAGAAACAATTT"
+        b"GGTAAAGGCTCCATCATGCGCCTGGGTGAAGACCGTTCCATGGATGTGGAAACCATCTCTACCGGT"
+    )
+    
+    genes = finder.find_genes(real_gene_dna)
+    assert len(genes) > 0
+    gene = genes[0]
+    
+    muts = gene.mutations(real_gene_dna)
+    assert isinstance(muts, list)
+    
+    # If the noisy model happened to insert a mutation, verify its structure
+    if muts:
+        assert hasattr(muts[0], "pos")
+        assert hasattr(muts[0], "mut_type")
+        assert hasattr(muts[0], "codon_idx")
+
+
+def test_rust_file_writers():
+    """Ensure the native Rust context managers safely open and write to files."""
+    finder = pyfgs.GeneFinder(pyfgs.Model.Complete)
+    seq = b"ATGGCTATCGACGAAAACAAACAGAAAGCGTTGGCGGCAGCACTGGGCCAGATTGAGAAACAATTT"
+    genes = finder.find_genes(seq)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        bed_path = os.path.join(tmpdir, "out.bed")
+        
+        # Test the Context Manager entry and exit
+        with pyfgs.BedWriter(bed_path) as writer:
+            writer.write_record(genes, "test_contig", seq)
+
+        assert os.path.exists(bed_path)
+        
+        # Verify the Rust code successfully flushed bytes to the OS
+        with open(bed_path, "r") as f:
+            content = f.read()
+            assert "source=ab initio" in content
+            assert "test_contig" in content
