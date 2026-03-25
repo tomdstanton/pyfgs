@@ -69,18 +69,24 @@ jobs:
           path: dist
 
   publish:
-    name: Publish to PyPI
-    needs: [build-wheels, build-sdist]
-    runs-on: ubuntu-latest
-    environment: pypi
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: dist
-          merge-multiple: true
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          skip-existing: true
+      name: Publish to PyPI
+      needs: [build-wheels, build-sdist]
+      runs-on: ubuntu-latest
+      environment: pypi
+      
+      # ADD THE PERMISSIONS BLOCK HERE
+      permissions:
+        id-token: write  # REQUIRED: Allows the OIDC token to be generated for PyPI
+        contents: read   # REQUIRED: To download artifacts or read the repo
+        
+      steps:
+        - name: Download all artifacts
+          uses: actions/download-artifact@v4
+          with:
+            path: dist
+            merge-multiple: true
+  
+        - name: Publish to PyPI
+          uses: pypa/gh-action-pypi-publish@release/v1
+          with:
+            skip-existing: true
