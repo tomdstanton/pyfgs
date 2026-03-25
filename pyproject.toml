@@ -48,6 +48,10 @@ docs = [
     "mkdocs-include-markdown-plugin",
 ]
 dev = [{include-group = "test"}, {include-group = "docs"}]
+benches = [
+    "pyrodigal>=3.7.1",
+    "pytest-benchmark>=5.2.3",
+]
 
 [build-system]
 requires = ["maturin>=1.12,<2.0"]

@@ -17,7 +17,7 @@ a gene prediction model for short and error-prone reads.*
 [![Downloads](https://img.shields.io/pypi/dm/pyfgs?style=flat-square&color=303f9f&maxAge=86400&label=downloads)](https://pepy.tech/project/pyfgs)
 
 
-## 🗺️ Why `pyfgs`?
+##  Why `pyfgs`?
 
 **Built for noisy data**
 
@@ -198,6 +198,45 @@ Other options 🚧:
   -v, --version       Print version and exit
   -h, --help          Print help and exit
 ```
+
+
+## Performance
+
+`pyfgs` is continuously benchmarked against NCBI RefSeq ground-truth datasets on every commit to `main` to ensure we never introduce performance regressions.
+
+`pyfgs` was benchmarked against `pyrodigal` (the excellent standard for Python-based gene prediction) to compare both raw inference speed and accuracy against NCBI RefSeq ground-truth annotations.
+
+Because `pyfgs` is powered by pre-trained Hidden Markov Models in Rust, it does not need to perform an initial training scan over the sequence to calculate transition probabilities. This allows it to scale incredibly well on larger genomes and massive metagenomic datasets.
+
+### ⏱️ Speed: The "No-Training" Advantage
+
+**Test Conditions:** Pure inference time (excluding I/O) on an M-series Mac, using complete reference genomes. `pyrodigal` was run in single-genome mode (`meta=False`, requiring a training step), and `pyfgs` was run with `whole_genome=True`.
+
+| Organism | Genome Size | `pyrodigal` Time | `pyfgs` Time | Speedup |
+| :--- | :--- | :--- | :--- | :--- |
+| *S. aureus* (Low GC) | 2.8 Mb | 0.85s | **0.85s** | **1.0x** (Tie) |
+| *E. coli* (Standard) | 4.6 Mb | 2.26s | **1.42s** | **1.6x** |
+| *P. aeruginosa* (High GC)| 6.3 Mb | 3.30s | **1.37s** | **2.4x** |
+
+*Note: For complete genomes, `pyrodigal`'s dynamic programming engine must first scan the entire sequence to build a statistical model. `pyfgs` completely bypasses this upfront compute tax, resulting in massive time savings on larger genomes.*
+
+### 🎯 Accuracy & The `whole_genome` Trade-off
+
+`pyfgs` offers two distinct modes of operation, allowing you to choose between strict RefSeq-style conservative calling and highly sensitive frameshift-aware predictions.
+
+**1. Complete Genomes (`whole_genome=True`)**
+When working with pristine, high-quality assemblies, setting `whole_genome=True` forces the Viterbi algorithm to only traverse standard codon states.
+* **Result:** Blistering speed and highly conservative gene calls that closely mirror strict NCBI RefSeq annotations (~93-97% exact 3' stop codon matches).
+
+**2. Noisy Reads & Metagenomes (`whole_genome=False`)**
+When working with raw Oxford Nanopore reads, error-prone contigs, or complex metagenomes, setting `whole_genome=False` unlocks the true power of the `pyfgs` HMM.
+* **The Compute Tax:** The Rust backend activates "Indel" states, mathematically evaluating the probability of a frameshift insertion or deletion at *every single nucleotide*. This increases the compute time by ~30-50%.
+* **The Sensitivity Boost:** The algorithm becomes incredibly forgiving. It successfully rescues broken genes, pseudogenes, and fragmented ORFs that standard dynamic programming tools completely discard. This results in a higher number of overall predicted ORFs, ensuring you don't miss crucial biological signals hidden behind sequencing errors.
+
+<div style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; margin-top: 1em;">
+    <iframe src="benchmarks/index.html" width="100%" height="800px" style="border:none;"></iframe>
+</div>
+
 
 
 ## 🔖 Citation

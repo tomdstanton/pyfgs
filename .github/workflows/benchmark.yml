@@ -1,0 +1,50 @@
+name: Continuous Benchmarking
+
+# Run whenever code is merged into main
+on:
+  push:
+    branches:
+      - main
+
+# Grant permissions to push the benchmark charts to GitHub Pages
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  benchmark:
+    name: Run & Publish Benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install pyfgs and dependencies
+        run: uv pip install --system -e . --group benches
+
+      - name: Run Pytest Benchmark
+        # We use --benchmark-json to export the data instead of just printing it
+        run: pytest benchmarks/bench_accuracy.py --benchmark-json=benchmark-data.json
+
+      - name: Store and Publish Benchmark Results
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          tool: 'pytest'
+          output-file-path: benchmark-data.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          # THE FIX: Push to a hidden data branch, not gh-pages!
+          gh-repository-branch: 'benchmark-data'
+
+          # If a commit accidentally makes pyfgs 20% slower, it will fail the CI!
+          alert-threshold: '120%'
+          fail-on-alert: true

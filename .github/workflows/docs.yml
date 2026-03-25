@@ -19,15 +19,42 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 1. Set up uv and Python first!
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version-file: "pyproject.toml"
 
+      # 2. Install dependencies using uv
       - name: Install dependencies
-        run: python -m pip install . --group docs
+        run: uv pip install --system -e . --group docs
 
+      # 3. Safely fetch the benchmark data
+      - name: Fetch Benchmark Dashboard
+        uses: actions/checkout@v4
+        # If the branch doesn't exist yet, don't crash the whole build!
+        continue-on-error: true 
+        with:
+          ref: benchmark-data
+          path: temp-benchmark-data
+
+      # 4. Bake into MkDocs (Only if the fetch was successful)
+      - name: Bake into MkDocs
+        run: |
+          if [ -d "temp-benchmark-data/dev/bench" ]; then
+            echo "Benchmark data found. Baking into docs..."
+            mkdir -p docs/benchmarks
+            cp -r temp-benchmark-data/dev/bench/* docs/benchmarks/
+          else
+            echo "No benchmark data found yet. Skipping bake step."
+          fi
+
+      # 5. Finally, deploy!
       - name: Deploy MkDocs
         run: mkdocs gh-deploy --force
