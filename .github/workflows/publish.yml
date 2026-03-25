@@ -9,6 +9,10 @@ jobs:
   version-check:
     name: 🛡️ Enforce Version Sync
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # REQUIRED: Allows the OIDC token to be generated
+      contents: read   # REQUIRED: Allows actions/checkout to read the repo
+      
     steps:
       - uses: actions/checkout@v4
 
