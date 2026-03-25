@@ -40,7 +40,11 @@ pyfgs = "pyfgs.cli:main"
 
 [dependency-groups]
 test = ["pytest", "pytest-cov"]
-docs = ["zensical>=0.0.29", "mkdocstrings"]
+docs = [
+    "zensical>=0.0.29",
+    "mkdocstrings",
+    "mkdocstrings-python>=2.0.3",
+]
 dev = [{include-group = "test"}, {include-group = "docs"}]
 benches = [
     "pyrodigal>=3.7.1",
