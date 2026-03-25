@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774440570450,
+  "lastUpdate": 1774450310705,
   "repoUrl": "https://github.com/tomdstanton/pyfgs",
   "entries": {
     "Benchmark": [
@@ -396,6 +396,72 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.004206741638169147",
             "extra": "mean: 2.1385959952000064 sec\nrounds: 5"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomdstanton@gmail.com",
+            "name": "Tom Stanton",
+            "username": "tomdstanton"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "19ec777e10795e83f2dfa4925a5759d3296c2e37",
+          "message": "Update permissions for version-check job\n\nAdded permissions for id-token and contents in version-check job.",
+          "timestamp": "2026-03-26T01:49:50+11:00",
+          "tree_id": "c83ac479edd2885688c9960277da7f2897652b12",
+          "url": "https://github.com/tomdstanton/pyfgs/commit/19ec777e10795e83f2dfa4925a5759d3296c2e37"
+        },
+        "date": 1774450309825,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyrodigal_accuracy[E_coli]",
+            "value": 0.5731124843075972,
+            "unit": "iter/sec",
+            "range": "stddev: 0.012328424090229863",
+            "extra": "mean: 1.7448581690000082 sec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyrodigal_accuracy[S_aureus]",
+            "value": 1.4670556055242994,
+            "unit": "iter/sec",
+            "range": "stddev: 0.003367535308183186",
+            "extra": "mean: 681.6374214000007 msec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyrodigal_accuracy[P_aeruginosa]",
+            "value": 0.4060240004840426,
+            "unit": "iter/sec",
+            "range": "stddev: 0.004932651134754585",
+            "extra": "mean: 2.4629085936000026 sec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyfgs_accuracy[E_coli]",
+            "value": 0.5274483798794848,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0017182715071839781",
+            "extra": "mean: 1.8959201282000095 sec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyfgs_accuracy[S_aureus]",
+            "value": 0.7639502113845559,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0068199900700777446",
+            "extra": "mean: 1.3089858280000157 sec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyfgs_accuracy[P_aeruginosa]",
+            "value": 0.46149227344636806,
+            "unit": "iter/sec",
+            "range": "stddev: 0.03373926235675566",
+            "extra": "mean: 2.1668835157999977 sec\nrounds: 5"
           }
         ]
       }
