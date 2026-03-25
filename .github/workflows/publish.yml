@@ -5,7 +5,6 @@ on:
     types: [published]
 
 jobs:
-  # 1. THE NEW GATEKEEPER JOB
   version-check:
     name: 🛡️ Enforce Version Sync
     runs-on: ubuntu-latest
@@ -27,10 +26,9 @@ jobs:
           fi
           echo "✅ Versions match (v$TAG_VERSION). Proceeding to build wheels!"
 
-  # 2. YOUR EXISTING BUILD JOB
   build-wheels:
     name: Build Wheels
-    needs: version-check # <--- ADD THIS LINE! This forces it to wait for the gatekeeper.
+    needs: version-check
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
