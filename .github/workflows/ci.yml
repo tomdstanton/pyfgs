@@ -18,21 +18,33 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      # Modernized to v5 to match your benchmark and docs workflows
       - name: Install uv
-        uses: astral-sh/setup-uv@v2
+        uses: astral-sh/setup-uv@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version-file: "pyproject.toml"
 
       - name: Build and Test
         run: |
           uv venv
           source .venv/bin/activate
           
-          # Install the package and all test dependencies (including pytest and pytest-cov)
+          # Install the package and all test dependencies
           uv pip install -e . --group test
           
-          # Run the test suite
-          pytest -v tests/
+          # Run the test suite with coverage explicitly declared here!
+          # We also generate an XML report for the Codecov upload step below.
+          pytest -v tests/ --cov=python/pyfgs --cov-report=term-missing --cov-report=xml
+
+      # Uploads the XML coverage data to Codecov to track your metrics over time
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+          # Note: Codecov v4 requires a token even for public repos.
+          # You can get one for free at codecov.io and add it to GitHub Secrets.
+          token: ${{ secrets.CODECOV_TOKEN }}

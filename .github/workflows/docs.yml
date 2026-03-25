@@ -4,25 +4,28 @@ on:
   push:
     branches:
       - main
-      - master
     paths:
       - 'docs/**'
-      - 'mkdocs.yml'
+      - 'zensical.toml'
       - 'python/pyfgs/**/*.py'
-      - 'python/pyfgs/**/*.pyi'
       - '.github/workflows/docs.yml'
 
+# We need elevated permissions for the modern Pages deployment
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. Set up uv and Python first!
       - name: Install uv
         uses: astral-sh/setup-uv@v5
 
@@ -31,30 +34,38 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
 
-      # 2. Install dependencies using uv
       - name: Install dependencies
         run: uv pip install --system -e . --group docs
 
-      # 3. Safely fetch the benchmark data
+      - name: Bake Root Markdown Files into Docs
+        run: |
+          cp README.md docs/index.md
+          cp CONTRIBUTING.md docs/contributing.md
+          cp CHANGELOG.md docs/changelog.md
+
       - name: Fetch Benchmark Dashboard
         uses: actions/checkout@v4
-        # If the branch doesn't exist yet, don't crash the whole build!
-        continue-on-error: true 
+        continue-on-error: true
         with:
           ref: benchmark-data
           path: temp-benchmark-data
 
-      # 4. Bake into MkDocs (Only if the fetch was successful)
-      - name: Bake into MkDocs
+      - name: Build Zensical Site
+        run: zensical build
+
+      - name: Inject Benchmarks into Compiled Site
         run: |
           if [ -d "temp-benchmark-data/dev/bench" ]; then
-            echo "Benchmark data found. Baking into docs..."
-            mkdir -p docs/benchmarks
-            cp -r temp-benchmark-data/dev/bench/* docs/benchmarks/
-          else
-            echo "No benchmark data found yet. Skipping bake step."
+            echo "Benchmark data found. Injecting into site..."
+            mkdir -p site/benchmarks
+            cp -r temp-benchmark-data/dev/bench/* site/benchmarks/
           fi
 
-      # 5. Finally, deploy!
-      - name: Deploy MkDocs
-        run: mkdocs gh-deploy --force
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './site'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

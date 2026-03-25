@@ -1,3 +1,10 @@
+---
+template: home.html
+hide:
+  - navigation
+  - toc
+---
+
 # 🔗🐍⏭️ `pyfgs` [![Stars](https://img.shields.io/github/stars/tomdstanton/pyfgs.svg?style=social&maxAge=3600&label=Star)](https://github.com/tomdstanton/pyfgs/stargazers)
 
 *PyO3 bindings and Python interface to [FragGeneScanRs](https://github.com/unipept/FragGeneScanRs),
@@ -232,12 +239,6 @@ When working with pristine, high-quality assemblies, setting `whole_genome=True`
 When working with raw Oxford Nanopore reads, error-prone contigs, or complex metagenomes, setting `whole_genome=False` unlocks the true power of the `pyfgs` HMM.
 * **The Compute Tax:** The Rust backend activates "Indel" states, mathematically evaluating the probability of a frameshift insertion or deletion at *every single nucleotide*. This increases the compute time by ~30-50%.
 * **The Sensitivity Boost:** The algorithm becomes incredibly forgiving. It successfully rescues broken genes, pseudogenes, and fragmented ORFs that standard dynamic programming tools completely discard. This results in a higher number of overall predicted ORFs, ensuring you don't miss crucial biological signals hidden behind sequencing errors.
-
-<div style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; margin-top: 1em;">
-    <iframe src="benchmarks/index.html" width="100%" height="800px" style="border:none;"></iframe>
-</div>
-
-
 
 ## 🔖 Citation
 

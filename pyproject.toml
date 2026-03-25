@@ -46,6 +46,7 @@ docs = [
     "mkdocs-material",
     "mkdocstrings-python",
     "mkdocs-include-markdown-plugin",
+    "zensical>=0.0.29",
 ]
 dev = [{include-group = "test"}, {include-group = "docs"}]
 benches = [
@@ -94,7 +95,6 @@ disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "--cov=python/pyfgs --cov-report term-missing"
 
 [tool.ruff]
 select = ["E", "F", "UP", "I001", "T201", "T203"]

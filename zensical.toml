@@ -1,0 +1,81 @@
+site_name = "🔗🐍⏭️ pyfgs"
+site_description = "PyO3 bindings and Python interface to FragGeneScanRs, a gene prediction model for short and error-prone reads."
+site_url = "https://tomdstanton.github.io/pyfgs/"
+repo_url = "https://github.com/tomdstanton/pyfgs"
+repo_name = "tomdstanton/pyfgs"
+site_author = "Tom Stanton"
+
+[theme]
+name = "material"
+custom_dir = "overrides"
+features = [
+    "navigation.tabs",
+    "navigation.sections",
+    "navigation.expand",
+    "content.code.copy"
+]
+
+# Light Mode (Default)
+[[theme.palette]]
+scheme = "default"
+primary = "indigo"
+accent = "deep purple"
+[theme.palette.toggle]
+icon = "material/brightness-7"
+name = "Switch to dark mode"
+
+# Dark Mode (Slate)
+[[theme.palette]]
+scheme = "slate"
+primary = "indigo"
+accent = "deep purple"
+[theme.palette.toggle]
+icon = "material/brightness-4"
+name = "Switch to light mode"
+
+[theme.font]
+text = "Roboto"
+code = "JetBrains Mono" # Makes your Python and Rust code blocks look incredibly crisp
+
+nav = [
+    { "Home" = "index.md" },
+    { "Getting Started" = [
+        { "Installation" = "installation.md" },
+        { "Quickstart" = "quickstart.md" }
+    ]},
+    { "User Guide" = [
+        { "CLI Usage" = "cli.md" },
+        { "Python API Tutorial" = "tutorial.md" }
+    ]},
+    { "Performance & Benchmarks" = "benchmarks.md" },
+    { "API Reference" = [
+        { "GeneFinder" = "api/genefinder.md" },
+        { "Formats & I/O" = "api/io.md" }
+    ]},
+    { "Development" = [
+        { "Contributing" = "contributing.md" },
+        { "Changelog" = "changelog.md" }
+    ]}
+]
+
+[markdown_extensions]
+# 1. Enables beautiful colored info/warning boxes
+admonition = {}
+"pymdownx.details" = {}
+
+# 2. Enables clickable tabs for code blocks (e.g., showing Python vs CLI usage side-by-side)
+"pymdownx.superfences" = {}
+"pymdownx.tabbed" = { alternate_style = true }
+
+# 3. Enables copy-to-clipboard buttons and syntax highlighting
+"pymdownx.highlight" = { anchor_linenums = true, use_pygments = true }
+"pymdownx.inlinehilite" = {}
+
+# 4. Math rendering (crucial for explaining your HMM transition probabilities!)
+"pymdownx.arithmatex" = { generic = true }
+
+[plugins]
+search = {}
+
+[plugins.mkdocstrings.handlers.python]
+paths = ["python"]

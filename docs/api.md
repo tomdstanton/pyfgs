@@ -1,4 +1,4 @@
-# pyfgs API Reference
+# API Reference
 
 This section provides the complete API documentation for `pyfgs`, parsed directly from the type stubs.
 
@@ -6,12 +6,32 @@ This section provides the complete API documentation for `pyfgs`, parsed directl
 
 ::: pyfgs.GeneFinder
 
-::: pyfgs.Gene
-
 ::: pyfgs.Model
 
-## Parsers
+## Result Classes
+
+::: pyfgs.Gene
+
+::: pyfgs.Mutation
+
+## I/O
+
+### File Readers
 
 ::: pyfgs.FastaReader
 
 ::: pyfgs.FastqReader
+
+
+### File Writers
+
+::: pyfgs.BedWriter
+
+::: pyfgs.VcfWriter
+
+::: pyfgs.Gff3Writer
+
+::: pyfgs.FnaWriter
+
+::: pyfgs.FaaWriter
+

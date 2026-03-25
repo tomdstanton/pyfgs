@@ -1,5 +1,7 @@
 # Import the compiled Rust classes from the hidden internal module
-from ._pyfgs import Model, FastaReader, FastqReader, Gene, GeneFinder, Mutation, BedWriter, VcfWriter, FnaWriter, FaaWriter
+from ._pyfgs import (Model, FastaReader, FastqReader, Gene, GeneFinder, Mutation, BedWriter, VcfWriter, Gff3Writer,
+                     FnaWriter, FaaWriter)
 
 # Define what gets imported when a user types `from pyfgs import *`
-__all__ = ["Model", "FastaReader", "FastqReader", "Gene", "GeneFinder", "Mutation", "BedWriter", "VcfWriter", "FnaWriter", "FaaWriter"]
+__all__ = ["Model", "FastaReader", "FastqReader", "Gene", "GeneFinder", "Mutation", "BedWriter", "VcfWriter",
+           "Gff3Writer", "FnaWriter", "FaaWriter"]
