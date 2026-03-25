@@ -1,0 +1,20 @@
+{% extends "main.html" %}
+
+{% block hero %}
+  <section class="mdx-hero" style="background-color: var(--md-primary-fg-color); color: var(--md-primary-bg-color); padding: 4rem 1rem; text-align: center;">
+    <div class="md-grid">
+      <h1 style="color: inherit; font-weight: 700; font-size: 3rem; margin-bottom: 0.5rem;">pyfgs</h1>
+      <p style="font-size: 1.25rem; margin-bottom: 2rem; opacity: 0.9;">
+        A blazing-fast, HMM-based gene predictor for metagenomics.
+      </p>
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+        <a href="quickstart/" class="md-button md-button--primary" style="background-color: var(--md-primary-bg-color); color: var(--md-primary-fg-color); border: none; font-weight: bold;">
+          Get Started
+        </a>
+        <a href="https://github.com/<your-username>/pyfgs" class="md-button" style="color: inherit; border-color: currentColor;">
+          View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+{% endblock %}
