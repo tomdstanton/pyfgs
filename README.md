@@ -71,6 +71,13 @@ This project is supported on Python 3.10 and later.
 pip install pyfgs
 ```
 
+⚡️ Power users ⚡️ can force your local machine to compile the Rust engine specifically for your own CPU by running:
+
+```console
+RUSTFLAGS="-C target-cpu=native" pip install --no-binary pyfgs pyfgs
+```
+
+
 ## 💻 Usage
 
 ### API Usage
