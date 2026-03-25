@@ -42,8 +42,7 @@ jobs:
           output-file-path: benchmark-data.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
-          # THE FIX: Push to a hidden data branch, not gh-pages!
-          gh-repository-branch: 'benchmark-data'
+          gh-pages-branch: 'benchmark-data'
 
           # If a commit accidentally makes pyfgs 20% slower, it will fail the CI!
           alert-threshold: '120%'
