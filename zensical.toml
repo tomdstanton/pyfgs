@@ -39,22 +39,11 @@ code = "JetBrains Mono" # Makes your Python and Rust code blocks look incredibly
 
 nav = [
     { "Home" = "index.md" },
-    { "Getting Started" = [
-        { "Installation" = "installation.md" },
-        { "Quickstart" = "quickstart.md" }
-    ]},
-    { "User Guide" = [
-        { "CLI Usage" = "cli.md" },
-        { "Python API Tutorial" = "tutorial.md" }
-    ]},
     { "Performance & Benchmarks" = "benchmarks.md" },
-    { "API Reference" = [
-        { "GeneFinder" = "api/genefinder.md" },
-        { "Formats & I/O" = "api/io.md" }
+    { "API Reference" = "api.md" },
     ]},
     { "Development" = [
-        { "Contributing" = "contributing.md" },
-        { "Changelog" = "changelog.md" }
+        { "Contributing" = "contributing.md" }
     ]}
 ]
 
