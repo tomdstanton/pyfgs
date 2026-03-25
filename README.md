@@ -19,8 +19,7 @@ a gene prediction model for short and error-prone reads.*
 [![Python Implementations](https://img.shields.io/pypi/implementation/pyfgs.svg?style=flat-square&maxAge=600&label=impl)](https://pypi.org/project/pyfgs/#files)
 [![Source](https://img.shields.io/badge/source-GitHub-303030.svg?maxAge=2678400&style=flat-square)](https://github.com/tomdstanton/pyfgs/)
 [![Issues](https://img.shields.io/github/issues/tomdstanton/pyfgs.svg?style=flat-square&maxAge=600)](https://github.com/tomdstanton/pyfgs/issues)
-[![Docs](https://img.shields.io/badge/Material_for_MkDocs-526CFE??style=flat-square&maxAge=600)](https://tomdstanton.github.io/pyfgs/)
-[![Changelog](https://img.shields.io/badge/keep%20a-changelog-8A0707.svg?maxAge=2678400&style=flat-square)](https://github.com/tomdstanton/pyfgs/blob/main/CHANGELOG.md)
+[![Docs](https://img.shields.io/badge/Material_for_MkDocs-526CFE??style=flat-square&maxAge=600)](https://tomdstanton.github.io/pyfgs/
 [![Downloads](https://img.shields.io/pypi/dm/pyfgs?style=flat-square&color=303f9f&maxAge=86400&label=downloads)](https://pepy.tech/project/pyfgs)
 
 
