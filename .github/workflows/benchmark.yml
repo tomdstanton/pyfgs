@@ -35,8 +35,8 @@ jobs:
         # We use --benchmark-json to export the data instead of just printing it
         run: pytest benchmarks/bench_accuracy.py --benchmark-json=benchmark-data.json
 
-      - name: Clean working directory
-        run: git restore Cargo.lock
+      - name: Clean working directory (Nuclear Option)
+        run: git reset --hard HEAD
 
       - name: Store and Publish Benchmark Results
         uses: benchmark-action/github-action-benchmark@v1
