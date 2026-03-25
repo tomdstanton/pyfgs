@@ -1,29 +1,37 @@
 name: Publish to PyPI
 
 on:
-  push:
-    tags:
-      - 'v*'
-
-permissions:
-  contents: read
-  id-token: write
+  release:
+    types: [published]
 
 jobs:
+  # 1. THE NEW GATEKEEPER JOB
+  version-check:
+    name: 🛡️ Enforce Version Sync
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assert Tag matches Cargo.toml
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          CARGO_VERSION=$(grep '^version =' Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
+          
+          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
+            echo "::error::🚨 Version Mismatch! GitHub Release tag is v$TAG_VERSION, but Cargo.toml says $CARGO_VERSION."
+            exit 1
+          fi
+          echo "✅ Versions match (v$TAG_VERSION). Proceeding to build wheels!"
+
+  # 2. YOUR EXISTING BUILD JOB
   build-wheels:
-    name: Build wheels on ${{ matrix.os }}
+    name: Build Wheels
+    needs: version-check # <--- ADD THIS LINE! This forces it to wait for the gatekeeper.
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64
-          - os: macos-14
-            target: universal2-apple-darwin
-          - os: windows-latest
-            target: x86_64
-
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    
     steps:
       - uses: actions/checkout@v4
 
