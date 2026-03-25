@@ -9,6 +9,7 @@ on:
       - 'zensical.toml'
       - 'python/pyfgs/**/*.py'
       - '.github/workflows/docs.yml'
+  workflow_dispatch:
 
 # We need elevated permissions for the modern Pages deployment
 permissions:
