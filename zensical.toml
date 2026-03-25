@@ -41,10 +41,7 @@ nav = [
     { "Home" = "index.md" },
     { "Performance & Benchmarks" = "benchmarks.md" },
     { "API Reference" = "api.md" },
-    ]},
-    { "Development" = [
-        { "Contributing" = "contributing.md" }
-    ]}
+    { "Development" = [{ "Contributing" = "contributing.md" }] }
 ]
 
 [markdown_extensions]
