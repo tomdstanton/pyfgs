@@ -8,7 +8,7 @@ name = "_pyfgs"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.28.2", features = ["extension-module"] }
+pyo3 = { version = "0.28.3", features = ["extension-module"] }
 frag_gene_scan_rs = "1.1.0"
 seq_io = "0.3.2"
 mimalloc = "0.1"
