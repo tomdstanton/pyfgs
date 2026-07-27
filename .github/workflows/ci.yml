@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Pytest on Linux
@@ -18,6 +22,12 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install just
+        uses: extractions/setup-just@v2
+
       # Modernized to v5 to match your benchmark and docs workflows
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -28,16 +38,7 @@ jobs:
           python-version-file: "pyproject.toml"
 
       - name: Build and Test
-        run: |
-          uv venv
-          source .venv/bin/activate
-          
-          # Install the package and all test dependencies
-          uv pip install -e . --group test
-          
-          # Run the test suite with coverage explicitly declared here!
-          # We also generate an XML report for the Codecov upload step below.
-          pytest -v tests/ --cov=python/pyfgs --cov-report=term-missing --cov-report=xml
+        run: just ci
 
       # Uploads the XML coverage data to Codecov to track your metrics over time
       - name: Upload coverage reports to Codecov

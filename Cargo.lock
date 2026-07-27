@@ -202,6 +202,7 @@ dependencies = [
  "frag_gene_scan_rs",
  "mimalloc",
  "pyo3",
+ "rayon",
  "seq_io",
 ]
 

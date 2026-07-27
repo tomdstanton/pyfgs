@@ -166,8 +166,7 @@ def _is_fastq(seq_arg, force_reads_flag) -> bool:
         return False
 
 
-# Main entry point -----------------------------------------------------------------------------------------------------
-def main():
+def get_parser():
     parser = argparse.ArgumentParser(
         prog="pyfgs", usage="%(prog)s <seq> [options]", add_help=False,
         description="🔗🐍⏭️\tPyO3 bindings and Python interface to FragGeneScanRs,\n"
@@ -208,7 +207,12 @@ def main():
                              help="Number of threads (default: optimal)")
     other_group.add_argument("-v", "--version", action='version', version="pyfgs 0.1.0", help="Print version and exit")
     other_group.add_argument("-h", "--help", action='help', help="Print help and exit")
+    return parser
 
+
+# Main entry point -----------------------------------------------------------------------------------------------------
+def main():
+    parser = get_parser()
     args = parser.parse_args()
 
     # 1. Output Resolution & Validation --------------------------------------------------------------------------------
@@ -254,25 +258,39 @@ def main():
         reader = (FastqReader if is_fastq else FastaReader)(args.seq)
 
     # 3. Execution Pipeline --------------------------------------------------------------------------------------------
-    def _process_record(record):
-        header, seq = record[0], record[1]
-        genes = finder.find_genes(seq) 
-        if not genes:
-            return None
-        return {fmt: formats_map[fmt](header, seq, genes) for fmt in active_outputs}
-    
+    from itertools import islice
+
+    def _chunked_iterable(iterable, size):
+        it = iter(iterable)
+        while True:
+            chunk = list(islice(it, size))
+            if not chunk:
+                break
+            yield chunk
+
+    def _process_batch(batch):
+        headers = [r[0] for r in batch]
+        seqs = [r[1] for r in batch]
+        
+        batch_genes = finder.find_genes_batch(seqs) 
+        
+        formatted_list = []
+        for header, seq, genes in zip(headers, seqs, batch_genes):
+            if not genes:
+                continue
+            formatted = {fmt: formats_map[fmt](header, seq, genes) for fmt in active_outputs}
+            formatted_list.append(formatted)
+        return formatted_list
 
     try:
-        with ThreadPoolExecutor(max_workers=args.threads) as executor:
-            for formatted_results in executor.map(_process_record, reader):
+        # Use a lightweight threadpool (2 workers) to overlap disk I/O with Rust batch processing
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            for formatted_results in executor.map(_process_batch, _chunked_iterable(reader, 10000)):
                 if formatted_results:
-                    for fmt, byte_string in formatted_results.items():
-                        out_files[fmt].write(byte_string)
+                    for formatted in formatted_results:
+                        for fmt, byte_string in formatted.items():
+                            out_files[fmt].write(byte_string)
     finally:
         for path, handle in zip(active_outputs.values(), out_files.values()):
             if path != "-":
                 handle.close()
-
-
-if __name__ == "__main__":
-    main()

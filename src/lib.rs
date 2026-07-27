@@ -13,7 +13,7 @@ use frag_gene_scan_rs::viterbi::viterbi;
 use frag_gene_scan_rs::dna::{Nuc, count_cg_content, trinucleotide, CODON_CODE, ANTI_CODON_CODE};
 
 use mimalloc::MiMalloc;
-
+use rayon::prelude::*;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
@@ -289,6 +289,9 @@ pub struct GeneFinder {
     whole_genome: bool,
 }
 
+unsafe impl Send for GeneFinder {}
+unsafe impl Sync for GeneFinder {}
+
 #[pymethods]
 impl GeneFinder {
     /// Initialize the GeneFinder.
@@ -369,6 +372,78 @@ impl GeneFinder {
         }).collect();
 
         Ok(genes)
+    }
+
+    /// Predict open reading frames for a batch of DNA sequences using Rayon.
+    ///
+    /// Args:
+    ///     sequences (list[bytes]): A list of raw nucleotide bytes.
+    ///
+    /// Returns:
+    ///     List[List[Gene]]: A list of predicted Gene objects for each sequence.
+    fn find_genes_batch(
+        &self,
+        py: Python<'_>,
+        sequences: Vec<Bound<'_, PyBytes>>,
+    ) -> PyResult<Vec<Vec<Gene>>> {
+        struct RawQuery {
+            seq_ptr: *const u8,
+            seq_len: usize,
+        }
+
+        unsafe impl Send for RawQuery {}
+        unsafe impl Sync for RawQuery {}
+
+        let mut raw_queries = Vec::with_capacity(sequences.len());
+        for seq in sequences {
+            raw_queries.push(RawQuery {
+                seq_ptr: seq.as_bytes().as_ptr(),
+                seq_len: seq.as_bytes().len(),
+            });
+        }
+
+        let results: Vec<Vec<Gene>> = py.detach(|| {
+            raw_queries
+                .par_iter()
+                .map(|raw_q| {
+                    let sequence = unsafe { std::slice::from_raw_parts(raw_q.seq_ptr, raw_q.seq_len) };
+                    let nuc_seq: Vec<Nuc> = sequence
+                        .iter()
+                        .filter(|&&b| !b.is_ascii_whitespace())
+                        .map(|&b| b.to_ascii_uppercase())
+                        .map(Nuc::from)
+                        .collect();
+
+                    let cg = count_cg_content(&nuc_seq);
+                    let local_model = &self.locals[cg];
+
+                    let prediction = viterbi(
+                        &self.global,
+                        local_model,
+                        Vec::new(), 
+                        nuc_seq,
+                        self.whole_genome
+                    );
+
+                    prediction.genes.into_iter().map(|g| {
+                        Gene {
+                            start: g.start.saturating_sub(1),
+                            end: g.end,
+                            strand: if g.forward_strand { 1 } else { -1 },
+                            frame: g.frame,
+                            score: g.score,
+                            insertions: g.inserted.into_iter().map(|i| i.saturating_sub(1)).collect(),
+                            deletions: g.deleted.into_iter().map(|i| i.saturating_sub(1)).collect(),
+                            dna_nucs: g.dna,
+                            forward_strand: g.forward_strand,
+                            whole_genome: self.whole_genome,
+                        }
+                    }).collect()
+                })
+                .collect()
+        });
+
+        Ok(results)
     }
 }
 

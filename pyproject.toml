@@ -1,6 +1,6 @@
 [project]
 name = "pyfgs"
-description = "PyO3 bindings and Python interface to FragGeneScanRs, a gene prediction model for short and error-prone reads."
+description = "Python bindings to FragGeneScanRs for fast, error-tolerant bacterial ORF prediction"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
 dynamic = ["version"]
@@ -41,9 +41,8 @@ pyfgs = "pyfgs.cli:main"
 [dependency-groups]
 test = ["pytest", "pytest-cov"]
 docs = [
-    "zensical>=0.0.29",
-    "mkdocstrings",
-    "mkdocstrings-python>=2.0.3",
+    "zensical",
+    "mkdocstrings[python]",
 ]
 dev = [{include-group = "test"}, {include-group = "docs"}]
 benches = [
@@ -60,27 +59,6 @@ binding = "pyo3"
 python-source = "python"
 features = ["pyo3/extension-module"]
 module-name = "pyfgs._pyfgs"
-
-[tool.black]
-line-length = 100
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.egg
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.nox
-  | \.tox
-  | \.venv
-  | \venv
-  | _build
-  | buck-out
-  | build
-  | dist
-  | setup.py
-)/
-'''
 
 [tool.mypy]
 check_untyped_defs = true

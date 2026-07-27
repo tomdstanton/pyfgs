@@ -385,6 +385,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/04/41/1cf02e3df279d2dd846a1bf235a928254eba9006dd22b4a14caa71aed0f7/mkdocstrings-1.0.3-py3-none-any.whl", hash = "sha256:0d66d18430c2201dc7fe85134277382baaa15e6b30979f3f3bdbabd6dbdb6046", size = 35523, upload-time = "2026-02-07T14:31:39.27Z" },
 ]
 
+[package.optional-dependencies]
+python = [
+    { name = "mkdocstrings-python" },
+]
+
 [[package]]
 name = "mkdocstrings-python"
 version = "2.0.3"
@@ -455,15 +460,13 @@ benches = [
     { name = "pytest-benchmark" },
 ]
 dev = [
-    { name = "mkdocstrings" },
-    { name = "mkdocstrings-python" },
+    { name = "mkdocstrings", extra = ["python"] },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "zensical" },
 ]
 docs = [
-    { name = "mkdocstrings" },
-    { name = "mkdocstrings-python" },
+    { name = "mkdocstrings", extra = ["python"] },
     { name = "zensical" },
 ]
 test = [
@@ -479,16 +482,14 @@ benches = [
     { name = "pytest-benchmark", specifier = ">=5.2.3" },
 ]
 dev = [
-    { name = "mkdocstrings" },
-    { name = "mkdocstrings-python", specifier = ">=2.0.3" },
+    { name = "mkdocstrings", extras = ["python"] },
     { name = "pytest" },
     { name = "pytest-cov" },
-    { name = "zensical", specifier = ">=0.0.29" },
+    { name = "zensical" },
 ]
 docs = [
-    { name = "mkdocstrings" },
-    { name = "mkdocstrings-python", specifier = ">=2.0.3" },
-    { name = "zensical", specifier = ">=0.0.29" },
+    { name = "mkdocstrings", extras = ["python"] },
+    { name = "zensical" },
 ]
 test = [
     { name = "pytest" },
