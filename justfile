@@ -31,16 +31,16 @@ benchmark: install
 
 # Format Python code
 fmt:
-    uv run ruff format .
+    uvx run ruff format .
 
 # Check Python formatting
 fmt-check:
-    uv run ruff format --check .
+    uvx run ruff format --check .
 
 # Lint Python code
 lint:
-    uv run ruff check .
-    uv run ty check .
+    uvx run ruff check .
+    uvx run ty check .
 
 # Run the full CI pipeline locally (format check, lint, test)
 ci: fmt-check lint test-cov
