@@ -15,13 +15,15 @@ site_dir = "site"
 watch = ["python"]
 
 nav = [
-    { "Home" = "index.md" },
-    { "Performance & Benchmarks" = "benchmarks.md" },
-    { "API Reference" = "api.md" },
-    { "CLI Reference" = "cli.md" },
-    { "Development" = [
-        "conduct.md",
+    { Home = "index.md" },
+    { Usage = [
+        "api.md",
+        "cli.md",
+    ] },
+    "benchmarks.md",
+    { Development = [
         "contributing.md",
+        "conduct.md",
   ] },
 ]
 
@@ -36,9 +38,6 @@ plugins = [
 
 [project.theme]
 name = "material"
-# logo = "assets/logo.png"
-# favicon = "assets/favicon.png"
-# custom_dir = "overrides"
 icon.repo = "fontawesome/brands/github"
 font.text = "Roboto Slab" #"DM Sans"
 font.code = "JetBrains Mono"
@@ -60,16 +59,18 @@ features = [
     "navigation.top",
     "navigation.footer",
     "navigation.tabs",
+    "navigation.tabs.sticky",
     "navigation.tracking",
     "navigation.sections",
     "navigation.expand",
     "navigation.instant",
     "navigation.instant.progress",
+    "navigation.path",
     "search.suggest",
     "search.highlight",
     "search.share",
     "toc.follow",
-    "toc.integrate",
+    # "toc.integrate",
 ]
 
 [project.extra]

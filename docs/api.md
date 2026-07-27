@@ -1,4 +1,10 @@
-# API Reference
+---
+title: API Reference
+author: Tom Stanton
+comments: true
+tags: [markdown, documentation, web]
+icon: lucide/code
+---
 
 This section provides the complete API documentation for `pyfgs`, parsed directly from the type stubs.
 

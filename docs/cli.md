@@ -1,5 +1,5 @@
 ---
-title: CLI Usage
+title: CLI Reference
 author: Tom Stanton
 comments: true
 tags: [markdown, documentation, web]

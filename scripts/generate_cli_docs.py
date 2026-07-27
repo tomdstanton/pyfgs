@@ -13,7 +13,7 @@ def main():
 
     with open('docs/cli.md', 'wt') as doc:
         doc.write(f"""---
-title: CLI Usage
+title: CLI Reference
 author: Tom Stanton
 comments: true
 tags: [markdown, documentation, web]
