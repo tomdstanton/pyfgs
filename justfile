@@ -15,7 +15,10 @@ clean:
     find . -type d -name ".pytest_cache" -exec rm -rf {} +
 
 install: clean
-    uv sync
+    uv sync --all-groups
+    cargo run --bin stub_gen --no-default-features
+    uv run python -c "f = 'python/pyfgs/_pyfgs/__init__.pyi'; c = open(f).read(); c = c.replace('typing.Optional[tuple[bytes, bytes]]', 'tuple[bytes, bytes]'); c = c.replace('typing.Optional[tuple[bytes, bytes, bytes]]', 'tuple[bytes, bytes, bytes]'); open(f, 'w').write(c)"
+    uvx ruff format python/pyfgs/_pyfgs/__init__.pyi
 
 # Run the test suite
 test +args="": install
@@ -45,12 +48,8 @@ lint:
 # Run the full CI pipeline locally (format check, lint, test)
 ci: fmt-check lint test-cov
 
-cli-docs: install
+prep-docs: install
     uv run scripts/generate_cli_docs.py
-
-prep-docs: cli-docs
-    cp README.md docs/index.md
-    cp CONTRIBUTING.md docs/contributing.md
 
 # Build the documentation locally
 docs-build: prep-docs

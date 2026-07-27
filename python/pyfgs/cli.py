@@ -323,7 +323,7 @@ def main():
         headers = [r[0] for r in batch]
         seqs = [r[1] for r in batch]
 
-        batch_genes = finder.find_genes_batch(seqs)  # type: ignore
+        batch_genes = finder.find_genes_batch(seqs)
 
         formatted_list = []
         for header, seq, genes in zip(headers, seqs, batch_genes):

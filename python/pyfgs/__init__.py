@@ -1,5 +1,5 @@
 # Import the compiled Rust classes from the hidden internal module
-from ._pyfgs import (  # type: ignore
+from ._pyfgs import (
     BedWriter,
     FaaWriter,
     FastaReader,

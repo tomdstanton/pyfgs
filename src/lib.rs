@@ -3,6 +3,9 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 
 use pyo3::prelude::*;
+use pyo3_stub_gen::define_stub_info_gatherer;
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods, gen_stub_pyfunction};
+
 use pyo3::types::PyBytes;
 
 use seq_io::fasta::{Reader, Record as FastaRecord};
@@ -18,6 +21,7 @@ use rayon::prelude::*;
 static GLOBAL: MiMalloc = MiMalloc;
 
 /// The available sequencing error models for FragGeneScanRs.
+#[gen_stub_pyclass_enum]
 #[pyclass(eq, eq_int, from_py_object)]
 #[derive(PartialEq, Clone, Debug)]
 pub enum Model {
@@ -49,11 +53,13 @@ impl Model {
 }
 
 /// A memory-efficient FASTA parser yielding (header, sequence).
+#[gen_stub_pyclass]
 #[pyclass(unsendable)]
 pub struct FastaReader {
     reader: Reader<File>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl FastaReader {
     /// Open a FASTA file for reading.
@@ -86,11 +92,13 @@ impl FastaReader {
 }
 
 /// A memory-efficient FASTQ parser yielding (header, sequence, qualities).
+#[gen_stub_pyclass]
 #[pyclass(unsendable)]
 pub struct FastqReader {
     reader: fastq::Reader<File>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl FastqReader {
     /// Open a FASTQ file for reading.
@@ -120,6 +128,7 @@ impl FastqReader {
     }
 }
 // 1. The pure data struct (No methods allowed in here!)
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct Gene {
     #[pyo3(get)]
@@ -258,6 +267,7 @@ impl Gene {
 }
 
 // 3. The Python-facing API (wraps the internal methods)
+#[gen_stub_pymethods]
 #[pymethods]
 impl Gene {
     fn __repr__(&self) -> String {
@@ -276,12 +286,14 @@ impl Gene {
     /// Extracts all frameshift mutations as structured objects.
     /// Requires the original raw sequence to determine VCF anchored alleles.
     #[pyo3(name = "mutations")]
-    pub fn py_mutations(&self, sequence: &[u8]) -> PyResult<Vec<Mutation>> {
+    pub fn py_mutations(&self, sequence: &Bound<'_, PyBytes>) -> PyResult<Vec<Mutation>> {
+        let sequence = sequence.as_bytes();
         Ok(self.extract_mutations(sequence))
     }
 }
 
 /// The main engine for finding genes, holding the HMM in memory.
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct GeneFinder {
     global: Box<Global>,
@@ -292,6 +304,7 @@ pub struct GeneFinder {
 unsafe impl Send for GeneFinder {}
 unsafe impl Sync for GeneFinder {}
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl GeneFinder {
     /// Initialize the GeneFinder.
@@ -333,7 +346,8 @@ impl GeneFinder {
     ///
     /// Returns:
     ///     List[Gene]: A list of predicted Gene objects.
-    fn find_genes(&self, py: Python, sequence: &[u8]) -> PyResult<Vec<Gene>> {
+    fn find_genes(&self, py: Python, sequence: &Bound<'_, PyBytes>) -> PyResult<Vec<Gene>> {
+        let sequence = sequence.as_bytes();
         let nuc_seq: Vec<Nuc> = sequence
             .iter()
             .filter(|&&b| !b.is_ascii_whitespace())
@@ -448,6 +462,7 @@ impl GeneFinder {
 }
 
 /// Represents a frameshift mutation detected by the ab initio model.
+#[gen_stub_pyclass]
 #[pyclass(get_all, skip_from_py_object)]
 #[derive(Clone, Debug)]
 pub struct Mutation {
@@ -465,6 +480,7 @@ pub struct Mutation {
     pub annotation: String,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Mutation {
     fn __repr__(&self) -> String {
@@ -476,11 +492,13 @@ impl Mutation {
 }
 
 /// A streaming writer for Extended BED (BED6+1) files.
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct BedWriter {
     writer: BufWriter<File>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl BedWriter {
     #[new]
@@ -513,7 +531,8 @@ impl BedWriter {
     }
 
     // Now requires the sequence byte slice to extract mutations
-    fn write_record(&mut self, genes: Vec<PyRef<Gene>>, header: &str, sequence: &[u8]) -> PyResult<()> {
+    fn write_record(&mut self, genes: Vec<PyRef<Gene>>, header: &str, sequence: &Bound<'_, PyBytes>) -> PyResult<()> {
+        let sequence = sequence.as_bytes();
         for (g_idx, gene) in genes.iter().enumerate() {
             let gene_id = format!("{}_FGS_{}", header, g_idx + 1);
             let strand_char = if gene.strand == 1 { "+" } else { "-" };
@@ -545,11 +564,13 @@ impl BedWriter {
 }
 
 /// A streaming writer for VCF v4.2 files.
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct VcfWriter {
     writer: BufWriter<File>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl VcfWriter {
     /// Opens the file and writes the VCF headers.
@@ -587,7 +608,8 @@ impl VcfWriter {
     }
 
     /// Writes the frameshift variants for a single contig/sequence.
-    fn write_record(&mut self, genes: Vec<PyRef<Gene>>, header: &str, sequence: &[u8]) -> PyResult<()> {
+    fn write_record(&mut self, genes: Vec<PyRef<Gene>>, header: &str, sequence: &Bound<'_, PyBytes>) -> PyResult<()> {
+        let sequence = sequence.as_bytes();
         for (g_idx, gene) in genes.iter().enumerate() {
             let mutations = gene.extract_mutations(sequence);
 
@@ -616,11 +638,13 @@ impl VcfWriter {
 }
 
 /// A streaming writer for INSDC-compliant GFF3 files.
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct Gff3Writer {
     writer: BufWriter<File>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl Gff3Writer {
     #[new]
@@ -650,7 +674,8 @@ impl Gff3Writer {
         Ok(())
     }
 
-    fn write_record(&mut self, genes: Vec<PyRef<Gene>>, header: &str, sequence: &[u8]) -> PyResult<()> {
+    fn write_record(&mut self, genes: Vec<PyRef<Gene>>, header: &str, sequence: &Bound<'_, PyBytes>) -> PyResult<()> {
+        let sequence = sequence.as_bytes();
         let version = env!("CARGO_PKG_VERSION");
         let source_name = format!("pyfgs_v{}", version);
 
@@ -706,11 +731,13 @@ impl Gff3Writer {
 }
 
 /// A streaming writer for non-wrapped nucleotide FASTA (.fna) files.
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct FnaWriter {
     writer: BufWriter<File>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl FnaWriter {
     #[new]
@@ -747,11 +774,13 @@ impl FnaWriter {
 }
 
 /// A streaming writer for non-wrapped amino acid FASTA (.faa) files.
+#[gen_stub_pyclass]
 #[pyclass]
 pub struct FaaWriter {
     writer: BufWriter<File>,
 }
 
+#[gen_stub_pymethods]
 #[pymethods]
 impl FaaWriter {
     #[new]
@@ -786,6 +815,8 @@ impl FaaWriter {
 }
 
 /// The Python module definition using the modern PyO3 Bound API
+define_stub_info_gatherer!(stub_info);
+
 #[pymodule]
 fn _pyfgs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Model>()?;
