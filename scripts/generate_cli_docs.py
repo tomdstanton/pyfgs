@@ -1,4 +1,3 @@
-
 import os
 import sys
 
@@ -8,10 +7,11 @@ sys.argv[0] = "pyfgs"
 
 from pyfgs.cli import get_parser
 
+
 def main():
     parser = get_parser()
 
-    with open('docs/cli.md', 'wt') as doc:
+    with open("docs/cli.md", "w") as doc:
         doc.write(f"""---
 title: CLI Reference
 author: Tom Stanton
@@ -26,5 +26,5 @@ icon: lucide/terminal
 """)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

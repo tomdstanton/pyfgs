@@ -1,7 +1,8 @@
-import pytest
-import tempfile
 import os
+import tempfile
+
 import pyfgs
+import pytest
 
 _recA = (
     b"ATGGCTATCGACGAAAACAAACAGAAAGCGTTGGCGGCAGCACTGGGCCAGATTGAGAAACAATTT"
@@ -23,11 +24,12 @@ _recA = (
     b"TTTTAA"
 )
 
+
 @pytest.fixture
 def sample_fasta():
     """Creates a temporary FASTA file for testing."""
     fd, path = tempfile.mkstemp(suffix=".fasta")
-    with os.fdopen(fd, 'wb') as f:
+    with os.fdopen(fd, "wb") as f:
         f.write(b">seq1\n")
         f.write(b"ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA\n")
         f.write(b"ATGCGTACGTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA\n")
@@ -39,7 +41,7 @@ def sample_fasta():
 def sample_fastq():
     """Creates a temporary FASTQ file for testing."""
     fd, path = tempfile.mkstemp(suffix=".fastq")
-    with os.fdopen(fd, 'wb') as f:
+    with os.fdopen(fd, "wb") as f:
         f.write(b"@read1\n")
         f.write(b"ATGCGTACGTAGCTAGCTAGCT\n")
         f.write(b"+\n")
@@ -98,7 +100,7 @@ def test_newline_filtering():
 def test_gene_properties_and_indels():
     """Verify that Genes use 0-based BED coordinates and correctly expose indels."""
     finder = pyfgs.GeneFinder(pyfgs.Model.Complete)
-    
+
     genes = finder.find_genes(_recA)
 
     assert len(genes) > 0
@@ -144,14 +146,14 @@ def test_mutations_api():
         b"ATGGCTATCGACGAAAACAAACAGAAAGCGTTGGCGGCAGCACTGGGCCAGATTGAGAAACAATTT"
         b"GGTAAAGGCTCCATCATGCGCCTGGGTGAAGACCGTTCCATGGATGTGGAAACCATCTCTACCGGT"
     )
-    
+
     genes = finder.find_genes(_recA)
     assert len(genes) > 0
     gene = genes[0]
-    
+
     muts = gene.mutations(_recA)
     assert isinstance(muts, list)
-    
+
     # If the noisy model happened to insert a mutation, verify its structure
     if muts:
         assert hasattr(muts[0], "pos")
@@ -162,23 +164,23 @@ def test_mutations_api():
 def test_rust_file_writers():
     """Ensure the native Rust context managers safely open and write to files."""
     finder = pyfgs.GeneFinder(pyfgs.Model.Complete)
-    
+
     genes = finder.find_genes(_recA)
-    
+
     # Sanity check: Ensure the HMM actually found a gene before testing the writer!
     assert len(genes) > 0
 
     with tempfile.TemporaryDirectory() as tmpdir:
         bed_path = os.path.join(tmpdir, "out.bed")
-        
+
         # Test the Context Manager entry and exit
         with pyfgs.BedWriter(bed_path) as writer:
             writer.write_record(genes, "test_contig", _recA)
 
         assert os.path.exists(bed_path)
-        
+
         # Verify the Rust code successfully flushed bytes to the OS
-        with open(bed_path, "r") as f:
+        with open(bed_path) as f:
             content = f.read()
             assert "source=ab initio" in content
             assert "test_contig" in content

@@ -1,11 +1,13 @@
-import pytest
-import urllib.request
 import gzip
+import urllib.request
 from pathlib import Path
-import pyfgs
-import pyrodigal
 
-_BASE_URL = 'https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000'
+import pyfgs
+import pyrodigal  # type: ignore
+import pytest
+
+_BASE_URL = "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000"
+
 
 def download_and_extract(url: str, name: str, ext: str) -> Path:
     """Downloads a gzipped file from NCBI and extracts it safely by name."""
@@ -14,7 +16,7 @@ def download_and_extract(url: str, name: str, ext: str) -> Path:
 
     if not file_path.exists():
         urllib.request.urlretrieve(url, gz_path)
-        with gzip.open(gz_path, 'rb') as f_in, file_path.open('wb') as f_out:
+        with gzip.open(gz_path, "rb") as f_in, file_path.open("wb") as f_out:
             f_out.write(f_in.read())
         gz_path.unlink()
 
@@ -22,21 +24,23 @@ def download_and_extract(url: str, name: str, ext: str) -> Path:
 
 
 def fetch_data(url: str, name: str):
-    fna_path = download_and_extract(f'{url}.fna.gz', name, "fna")
-    gff_path = download_and_extract(f'{url}.gff.gz', name, "gff")
+    fna_path = download_and_extract(f"{url}.fna.gz", name, "fna")
+    gff_path = download_and_extract(f"{url}.gff.gz", name, "gff")
 
     # Parse True Stops
     true_stops = set()
-    with gff_path.open('r') as f:
+    with gff_path.open("r") as f:
         for line in f:
-            if line.startswith('#'): continue
-            parts = line.split('\t')
-            if len(parts) < 9 or parts[2] != 'CDS': continue
+            if line.startswith("#"):
+                continue
+            parts = line.split("\t")
+            if len(parts) < 9 or parts[2] != "CDS":
+                continue
 
             seq_id = parts[0]
             start = int(parts[3]) - 1
             end = int(parts[4])
-            strand = 1 if parts[6] == '+' else -1
+            strand = 1 if parts[6] == "+" else -1
 
             stop = end if strand == 1 else start
             true_stops.add((seq_id, strand, stop))
@@ -44,29 +48,41 @@ def fetch_data(url: str, name: str):
     # THE FIX: Parse Contigs AND scrub newlines/whitespace so pyrodigal doesn't choke!
     contigs = []
     for header, seq_bytes in pyfgs.FastaReader(str(fna_path)):
-        seq_id = header.decode('ascii').split()[0]
+        seq_id = header.decode("ascii").split()[0]
 
         # Strip all whitespace and force uppercase
-        clean_seq_str = seq_bytes.decode('ascii').replace('\n', '').replace('\r', '').replace(' ', '').upper()
+        clean_seq_str = (
+            seq_bytes.decode("ascii").replace("\n", "").replace("\r", "").replace(" ", "").upper()
+        )
 
         # Re-encode to bytes for the benchmark loop
-        contigs.append((seq_id, clean_seq_str.encode('ascii')))
+        contigs.append((seq_id, clean_seq_str.encode("ascii")))
 
     return contigs, true_stops
+
 
 @pytest.fixture(scope="session")
 def genomes() -> dict[str, tuple]:
     """Session fixture to download data and parse GFF only ONCE per test suite run."""
     print("\nFetching Genomes from NCBI...")
     return {
-        'E_coli': fetch_data(f"{_BASE_URL}/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic", "E_coli"),
-        'S_aureus': fetch_data(f"{_BASE_URL}/013/425/GCF_000013425.1_ASM1342v1/GCF_000013425.1_ASM1342v1_genomic", "S_aureus"),
-        'P_aeruginosa': fetch_data(f"{_BASE_URL}/006/765/GCF_000006765.1_ASM676v1/GCF_000006765.1_ASM676v1_genomic", "P_aeruginosa")
+        "E_coli": fetch_data(
+            f"{_BASE_URL}/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic",
+            "E_coli",
+        ),
+        "S_aureus": fetch_data(
+            f"{_BASE_URL}/013/425/GCF_000013425.1_ASM1342v1/GCF_000013425.1_ASM1342v1_genomic",
+            "S_aureus",
+        ),
+        "P_aeruginosa": fetch_data(
+            f"{_BASE_URL}/006/765/GCF_000006765.1_ASM676v1/GCF_000006765.1_ASM676v1_genomic",
+            "P_aeruginosa",
+        ),
     }
 
 
 # The parameterize decorator feeds the genome names into the test function one by one
-@pytest.mark.parametrize("genome_name", ['E_coli', 'S_aureus', 'P_aeruginosa'])
+@pytest.mark.parametrize("genome_name", ["E_coli", "S_aureus", "P_aeruginosa"])
 def test_pyrodigal_accuracy(benchmark, genomes, genome_name):
     """Benchmarks pyrodigal speed and calculates accuracy."""
     contigs, true_stops = genomes[genome_name]
@@ -76,7 +92,7 @@ def test_pyrodigal_accuracy(benchmark, genomes, genome_name):
         stops = set()
         for seq_id, seq_bytes in contigs:
             # Pyrodigal requires a python string
-            seq_str = seq_bytes.decode('ascii')
+            seq_str = seq_bytes.decode("ascii")
 
             # THE FIX: We must train the dynamic programming model on the sequence first!
             finder.train(seq_str)
@@ -98,7 +114,7 @@ def test_pyrodigal_accuracy(benchmark, genomes, genome_name):
     print(f"Ground Truth: {len(true_stops)} | Perfect Matches: {tp} | Missed: {fn} | Extra: {fp}")
 
 
-@pytest.mark.parametrize("genome_name", ['E_coli', 'S_aureus', 'P_aeruginosa'])
+@pytest.mark.parametrize("genome_name", ["E_coli", "S_aureus", "P_aeruginosa"])
 def test_pyfgs_accuracy(benchmark, genomes, genome_name):
     """Benchmarks pyfgs speed and calculates accuracy."""
     contigs, true_stops = genomes[genome_name]
