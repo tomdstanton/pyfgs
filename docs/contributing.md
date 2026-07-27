@@ -3,7 +3,7 @@ title: Contributing
 author: Tom Stanton
 comments: true
 tags: [development]
-icon: lucide/handshake
+icon: material/handshake
 categories:
   - Development
 ---

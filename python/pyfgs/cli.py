@@ -1,9 +1,8 @@
 import argparse
 import os
 import sys
-from concurrent.futures import ThreadPoolExecutor
 
-from pyfgs import FastaReader, FastqReader, GeneFinder, Model
+from pyfgs import GeneFinder, Model
 
 # Constants ------------------------------------------------------------------------------------------------------------
 _MODEL_MAP = {
@@ -275,73 +274,19 @@ def main():
             f"⚠️ WARNING: Multiple outputs ({', '.join(stdouts)}) are writing to stdout. Streams will interleave!\n"
         )
 
-    out_files = {}
-    for fmt, path in active_outputs.items():
-        handle = sys.stdout.buffer if path == "-" else open(path, "wb")
-        out_files[fmt] = handle
-
-        # Inject standard headers for tabular formats
-        if fmt == "bed":
-            handle.write(
-                b"# source=ab initio prediction: pyfgs\n# CHROM\tSTART\tEND\tNAME\tSCORE\tSTRAND\tMUTATIONS\n"
-            )
-        elif fmt == "gff":
-            handle.write(b"##gff-version 3\n#source-ontology=ab initio prediction: pyfgs\n")
-        elif fmt == "vcf":
-            handle.write(
-                b"##fileformat=VCFv4.2\n##source=pyfgs_ab_initio\n"
-                b'##INFO=<ID=TYPE,Number=1,Type=String,Description="Type of sequence discrepancy">\n'
-                b'##INFO=<ID=GENE,Number=1,Type=String,Description="Predicted Gene ID">\n'
-                b'##INFO=<ID=CODON,Number=1,Type=Integer,Description="1-based codon index of the frameshift">\n'
-                b"##INFO=<ID=ANN,Number=.,Type=String,Description=\"Functional annotations: 'Allele | Annotation | Annotation_Impact | Gene_Name | Gene_ID | Feature_Type | Feature_ID | Transcript_Biotype | Rank | HGVS.c'\">\n"
-                b"#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n"
-            )
-
     # 2. Init Engine & Input -------------------------------------------------------------------------------------------
     finder = GeneFinder(_MODEL_MAP[args.model], whole_genome=args.whole_genome)
 
     # Automatically resolve FASTQ parsing!
     is_fastq = _is_fastq(args.seq, args.reads)
 
-    if args.seq == "-":
-        reader = _FastqStreamer() if is_fastq else _FastaStreamer()
-    else:
-        reader = (FastqReader if is_fastq else FastaReader)(args.seq)
-
     # 3. Execution Pipeline --------------------------------------------------------------------------------------------
-    from itertools import islice
+    # Using the pure Rust processing pipeline!
 
-    def _chunked_iterable(iterable, size):
-        it = iter(iterable)
-        while True:
-            chunk = list(islice(it, size))
-            if not chunk:
-                break
-            yield chunk
-
-    def _process_batch(batch):
-        headers = [r[0] for r in batch]
-        seqs = [r[1] for r in batch]
-
-        batch_genes = finder.find_genes_batch(seqs)
-
-        formatted_list = []
-        for header, seq, genes in zip(headers, seqs, batch_genes):
-            if not genes:
-                continue
-            formatted = {fmt: formats_map[fmt](header, seq, genes) for fmt in active_outputs}
-            formatted_list.append(formatted)
-        return formatted_list
+    outputs_map = active_outputs
 
     try:
-        # Use a lightweight threadpool (2 workers) to overlap disk I/O with Rust batch processing
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            for formatted_results in executor.map(_process_batch, _chunked_iterable(reader, 10000)):
-                if formatted_results:
-                    for formatted in formatted_results:
-                        for fmt, byte_string in formatted.items():
-                            out_files[fmt].write(byte_string)
-    finally:
-        for path, handle in zip(active_outputs.values(), out_files.values()):
-            if path != "-":
-                handle.close()
+        finder.run_cli_pipeline(args.seq, is_fastq, outputs_map)
+    except Exception as e:
+        sys.stderr.write(f"Error during execution: {e}\n")
+        sys.exit(1)

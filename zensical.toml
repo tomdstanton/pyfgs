@@ -17,6 +17,9 @@ watch = ["python"]
 nav = [
     { Home = "index.md" },
     { Usage = [
+        { "API Reference" = [
+        
+        ] },
         "api.md",
         "cli.md",
     ] },
@@ -39,7 +42,7 @@ plugins = [
 [project.theme]
 name = "material"
 icon.repo = "fontawesome/brands/github"
-font.text = "Roboto Slab" #"DM Sans"
+font.text = "Roboto Slab"
 font.code = "JetBrains Mono"
 
 palette = [

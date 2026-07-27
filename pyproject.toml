@@ -25,6 +25,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Medical Science Apps.",
     "Typing :: Typed",
 ]
+dependencies = [
+    "numpy>=2.2.6",
+]
 
 [project.urls]
 Homepage = "https://tomdstanton.github.io/pyfgs/"

@@ -3,6 +3,8 @@
 
 import builtins
 import enum
+import numpy
+import numpy.typing
 import typing
 
 __all__ = [
@@ -14,6 +16,8 @@ __all__ = [
     "Gene",
     "GeneFinder",
     "Gff3Writer",
+    "HmmGlobal",
+    "HmmLocal",
     "Model",
     "Mutation",
     "VcfWriter",
@@ -137,13 +141,20 @@ class GeneFinder:
             whole_genome (bool, optional): Set to True if analyzing complete genomic sequences
                 rather than short reads. Defaults to False.
         """
+    def global_model(self) -> HmmGlobal:
+        r"""
+        Exposes the underlying global HMM parameters (read-only).
+        """
+    def local_models(self) -> builtins.list[HmmLocal]:
+        r"""
+        Exposes the underlying local (GC-specific) HMM parameters (read-only).
+        """
     def find_genes(self, sequence: bytes) -> builtins.list[Gene]:
         r"""
         Predict open reading frames in a given DNA sequence.
 
         This method releases the GIL, allowing for safe multi-threading
         across multiple CPU cores.
-        Predict open reading frames in a given DNA sequence.
 
         Args:
             sequence (bytes): The raw nucleotide bytes.
@@ -163,6 +174,20 @@ class GeneFinder:
         Returns:
             List[List[Gene]]: A list of predicted Gene objects for each sequence.
         """
+    def run_cli_pipeline(
+        self,
+        input_path: builtins.str,
+        is_fastq: builtins.bool,
+        outputs: typing.Mapping[builtins.str, builtins.str],
+    ) -> None:
+        r"""
+        Run the full CLI pipeline purely in Rust without python loop overhead.
+
+        Args:
+            input_path (str): The path to the FASTA/FASTQ file or "-" for stdin.
+            is_fastq (bool): True if parsing as FASTQ.
+            outputs (Dict[str, str]): Output formats and paths.
+        """
 
 @typing.final
 class Gff3Writer:
@@ -180,6 +205,62 @@ class Gff3Writer:
     def write_record(
         self, genes: typing.Sequence[Gene], header: builtins.str, sequence: bytes
     ) -> None: ...
+
+@typing.final
+class HmmGlobal:
+    r"""
+    A wrapper around the FragGeneScanRs Global HMM states
+    """
+    def pi(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Initial state probabilities
+        """
+    def transitions(self) -> dict:
+        r"""
+        Transition probabilities (MM, MI, MD, II, IM, DD, DM, GE, GG, ER, RS, RR, ES, ES1)
+        """
+    def tr_ii(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Insertion-to-insertion transition matrix [4 x 4]
+        """
+    def tr_mi(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Match-to-insertion transition matrix [4 x 4]
+        """
+
+@typing.final
+class HmmLocal:
+    r"""
+    A wrapper around the FragGeneScanRs Local (GC-specific) HMM states
+    """
+    def e_m(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Emission probabilities for match states [PERIOD x BI_ACGT x ACGT]
+        """
+    def e_m1(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Emission probabilities for match reverse states [PERIOD x BI_ACGT x ACGT]
+        """
+    def tr_rr(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Background noncoding transition matrix [4 x 4]
+        """
+    def tr_s(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Start state transitions [WINDOW x TRI_ACGT]
+        """
+    def tr_e(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        End state transitions [WINDOW x TRI_ACGT]
+        """
+    def tr_s1(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Reverse start state transitions [WINDOW x TRI_ACGT]
+        """
+    def tr_e1(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Reverse end state transitions [WINDOW x TRI_ACGT]
+        """
 
 @typing.final
 class Mutation:

@@ -12,6 +12,10 @@ This section provides the complete API documentation for `pyfgs`, parsed directl
 
 ::: pyfgs.GeneFinder
 
+::: pyfgs.HmmGlobal
+
+::: pyfgs.HmmLocal
+
 ::: pyfgs.Model
 
 ## Result Classes
