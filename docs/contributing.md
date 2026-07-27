@@ -1,4 +1,5 @@
 ---
+title: Contributing
 author: Tom Stanton
 comments: true
 tags: [development]

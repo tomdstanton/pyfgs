@@ -17,8 +17,8 @@ clean:
 install: clean
     uv sync --all-groups
     cargo run --bin stub_gen --no-default-features
-    uv run python -c "f = 'python/pyfgs/_pyfgs/__init__.pyi'; c = open(f).read(); c = c.replace('typing.Optional[tuple[bytes, bytes]]', 'tuple[bytes, bytes]'); c = c.replace('typing.Optional[tuple[bytes, bytes, bytes]]', 'tuple[bytes, bytes, bytes]'); open(f, 'w').write(c)"
-    uvx ruff format python/pyfgs/_pyfgs/__init__.pyi
+    uv run python scripts/sync_stubs.py
+    uvx ruff format python/pyfgs/__init__.py python/pyfgs/__init__.pyi python/pyfgs/_pyfgs/__init__.pyi
 
 # Run the test suite
 test +args="": install
@@ -53,11 +53,11 @@ prep-docs: install
 
 # Build the documentation locally
 docs-build: prep-docs
-    uv run --group docs zensical build
+    uv run --group docs zensical build -c
 
 # Test if documentation can be built without warnings or errors
 docs-test: prep-docs
-    uv run --group docs zensical build -s
+    uv run --group docs zensical build -c -s
 
 serve: prep-docs
     uv run --group docs zensical serve
