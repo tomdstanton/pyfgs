@@ -3,7 +3,7 @@ import urllib.request
 from pathlib import Path
 
 import pyfgs
-import pyrodigal  # type: ignore
+import pyrodigal
 import pytest
 
 _BASE_URL = "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000"
