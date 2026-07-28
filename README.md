@@ -71,7 +71,7 @@ If you are a power user integrating gene prediction into a larger Python pipelin
 ```python
 import pyfgs
 
-# 1. Initialize the gene finder 
+# 1. Initialize the gene finder
 # By default, this loads the Illumina HMM model (error-tolerant).
 finder = pyfgs.GeneFinder()
 
@@ -86,16 +86,16 @@ sequences = [
 batch = finder.find_genes_batch(sequences)
 
 # 4. Access predictions as flat, 1-dimensional NumPy arrays (Structure-of-Arrays)
-print(batch.starts)          # array([0, ...])
-print(batch.ends)            # array([18, ...])
-print(batch.strands)         # array([1, ...])
-print(batch.scores)          # array([12.34, ...])
+print(batch.starts)  # array([0, ...])
+print(batch.ends)  # array([18, ...])
+print(batch.strands)  # array([1, ...])
+print(batch.scores)  # array([12.34, ...])
 
-# 5. Fields with variable counts per gene (e.g. insertions/deletions) 
-# are exposed as flat arrays alongside parallel "offsets" arrays 
+# 5. Fields with variable counts per gene (e.g. insertions/deletions)
+# are exposed as flat arrays alongside parallel "offsets" arrays
 # defining the slice boundaries (i.e. ragged arrays).
 print(batch.insertions_offsets)
-print(batch.insertions_flat)         
+print(batch.insertions_flat)
 ```
 
 ### 2. High-Performance I/O Pipeline
@@ -114,7 +114,7 @@ finder.run_file(
     outputs={
         "gff3": "output.gff3",
         "faa": "output.faa",
-    }
+    },
 )
 ```
 

@@ -192,9 +192,7 @@ class GeneFinder:
     r"""
     The main engine for finding genes, holding the HMM in memory.
     """
-    def __new__(
-        cls, model: Model, whole_genome: builtins.bool | None = None
-    ) -> GeneFinder:
+    def __new__(cls, model: Model, whole_genome: builtins.bool | None = None) -> GeneFinder:
         r"""
         Initialize the GeneFinder.
 
