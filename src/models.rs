@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use numpy::PyArray1;
 
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods};
@@ -208,6 +209,45 @@ impl Gene {
     }
 }
 
+/// A vectorized structure representing a batch of gene predictions.
+///
+/// This structure uses a Structure-of-Arrays (SoA) layout. Fields that have variable 
+/// counts per gene (e.g. insertions and deletions) are exposed as flat arrays alongside 
+/// parallel "offsets" arrays defining the slice boundaries (i.e. ragged arrays).
+#[gen_stub_pyclass]
+#[pyclass]
+pub struct GeneBatch {
+    /// Array of shape (N,) containing the index of the sequence in the batch for each gene.
+    #[pyo3(get)] pub sequence_indices: Py<PyArray1<u64>>,
+    
+    /// Array of shape (N,) containing the start coordinates of each gene.
+    #[pyo3(get)] pub starts: Py<PyArray1<u64>>,
+    
+    /// Array of shape (N,) containing the end coordinates of each gene.
+    #[pyo3(get)] pub ends: Py<PyArray1<u64>>,
+    
+    /// Array of shape (N,) containing the strands of each gene (1 for forward, -1 for reverse).
+    #[pyo3(get)] pub strands: Py<PyArray1<i8>>,
+    
+    /// Array of shape (N,) containing the frame of each gene.
+    #[pyo3(get)] pub frames: Py<PyArray1<u64>>,
+    
+    /// Array of shape (N,) containing the prediction scores of each gene.
+    #[pyo3(get)] pub scores: Py<PyArray1<f64>>,
+    
+    /// Flat array containing all insertion coordinates across all genes.
+    #[pyo3(get)] pub insertions_flat: Py<PyArray1<u64>>,
+    
+    /// Array of shape (N+1,) containing the slice offsets for `insertions_flat`.
+    #[pyo3(get)] pub insertions_offsets: Py<PyArray1<u64>>,
+    
+    /// Flat array containing all deletion coordinates across all genes.
+    #[pyo3(get)] pub deletions_flat: Py<PyArray1<u64>>,
+    
+    /// Array of shape (N+1,) containing the slice offsets for `deletions_flat`.
+    #[pyo3(get)] pub deletions_offsets: Py<PyArray1<u64>>,
+}
+
 /// The main engine for finding genes, holding the HMM in memory.
 #[gen_stub_pyclass]
 #[pyclass]
@@ -277,9 +317,7 @@ impl GeneFinder {
         let sequence = sequence.as_bytes();
         let nuc_seq: Vec<Nuc> = sequence
             .iter()
-            .filter(|&&b| !b.is_ascii_whitespace())
-            .map(|&b| b.to_ascii_uppercase())
-            .map(Nuc::from)
+            .map(|&b| Nuc::from(b))
             .collect();
 
         // 2. Run the heavy HMM inference without the GIL
@@ -322,11 +360,12 @@ impl GeneFinder {
     ///
     /// Returns:
     ///     List[List[Gene]]: A list of predicted Gene objects for each sequence.
+    #[pyo3(name = "find_genes_batch")]
     fn find_genes_batch(
         &self,
         py: Python<'_>,
         sequences: Vec<Bound<'_, PyBytes>>,
-    ) -> PyResult<Vec<Vec<Gene>>> {
+    ) -> PyResult<GeneBatch> {
         struct RawQuery {
             seq_ptr: *const u8,
             seq_len: usize,
@@ -343,48 +382,89 @@ impl GeneFinder {
             });
         }
 
-        let results: Vec<Vec<Gene>> = py.detach(|| {
+        let predictions: Vec<Vec<_>> = py.detach(|| {
             raw_queries
                 .par_iter()
                 .map(|raw_q| {
                     let sequence = unsafe { std::slice::from_raw_parts(raw_q.seq_ptr, raw_q.seq_len) };
                     let nuc_seq: Vec<Nuc> = sequence
                         .iter()
-                        .filter(|&&b| !b.is_ascii_whitespace())
-                        .map(|&b| b.to_ascii_uppercase())
-                        .map(Nuc::from)
+                        .map(|&b| Nuc::from(b))
                         .collect();
 
                     let cg = count_cg_content(&nuc_seq);
                     let local_model = &self.locals[cg];
 
-                    let prediction = viterbi(
+                    viterbi(
                         &self.global,
                         local_model,
                         Vec::new(), 
                         nuc_seq,
                         self.whole_genome
-                    );
-
-                    prediction.genes.into_iter().map(|g| {
-                        Gene {
-                            start: g.start.saturating_sub(1),
-                            end: g.end,
-                            strand: if g.forward_strand { 1 } else { -1 },
-                            frame: g.frame,
-                            score: g.score,
-                            insertions: g.inserted.into_iter().map(|i| i.saturating_sub(1)).collect(),
-                            deletions: g.deleted.into_iter().map(|i| i.saturating_sub(1)).collect(),
-                            dna_nucs: g.dna,
-                            forward_strand: g.forward_strand,
-                            whole_genome: self.whole_genome,
-                        }
-                    }).collect()
+                    ).genes
                 })
                 .collect()
         });
 
-        Ok(results)
+        let mut total_genes = 0;
+        let mut total_ins = 0;
+        let mut total_del = 0;
+        for genes in &predictions {
+            total_genes += genes.len();
+            for g in genes {
+                total_ins += g.inserted.len();
+                total_del += g.deleted.len();
+            }
+        }
+
+        let mut sequence_indices = Vec::with_capacity(total_genes);
+        let mut starts = Vec::with_capacity(total_genes);
+        let mut ends = Vec::with_capacity(total_genes);
+        let mut strands = Vec::with_capacity(total_genes);
+        let mut frames = Vec::with_capacity(total_genes);
+        let mut scores = Vec::with_capacity(total_genes);
+
+        let mut insertions_flat = Vec::with_capacity(total_ins);
+        let mut insertions_offsets = Vec::with_capacity(total_genes + 1);
+        insertions_offsets.push(0);
+
+        let mut deletions_flat = Vec::with_capacity(total_del);
+        let mut deletions_offsets = Vec::with_capacity(total_genes + 1);
+        deletions_offsets.push(0);
+
+        for (seq_idx, genes) in predictions.into_iter().enumerate() {
+            for g in genes {
+                sequence_indices.push(seq_idx as u64);
+                starts.push(g.start.saturating_sub(1) as u64);
+                ends.push(g.end as u64);
+                strands.push(if g.forward_strand { 1 } else { -1 });
+                frames.push(g.frame as u64);
+                scores.push(g.score);
+
+                for i in g.inserted {
+                    insertions_flat.push(i.saturating_sub(1) as u64);
+                }
+                insertions_offsets.push(insertions_flat.len() as u64);
+
+                for d in g.deleted {
+                    deletions_flat.push(d.saturating_sub(1) as u64);
+                }
+                deletions_offsets.push(deletions_flat.len() as u64);
+            }
+        }
+
+        Ok(GeneBatch {
+            sequence_indices: PyArray1::from_vec(py, sequence_indices).into(),
+            starts: PyArray1::from_vec(py, starts).into(),
+            ends: PyArray1::from_vec(py, ends).into(),
+            strands: PyArray1::from_vec(py, strands).into(),
+            frames: PyArray1::from_vec(py, frames).into(),
+            scores: PyArray1::from_vec(py, scores).into(),
+            insertions_flat: PyArray1::from_vec(py, insertions_flat).into(),
+            insertions_offsets: PyArray1::from_vec(py, insertions_offsets).into(),
+            deletions_flat: PyArray1::from_vec(py, deletions_flat).into(),
+            deletions_offsets: PyArray1::from_vec(py, deletions_offsets).into(),
+        })
     }
 
     /// Run the full CLI pipeline purely in Rust without python loop overhead.
@@ -394,14 +474,14 @@ impl GeneFinder {
     ///     is_fastq (bool): True if parsing as FASTQ.
     ///     outputs (Dict[str, str]): Output formats and paths.
     #[pyo3(signature = (input_path, is_fastq, outputs))]
-    fn run_cli_pipeline(
+    fn run_file(
         &self,
         py: Python<'_>,
         input_path: &str,
         is_fastq: bool,
         outputs: std::collections::HashMap<String, String>,
     ) -> PyResult<()> {
-        crate::cli::run_cli_pipeline(py, self, input_path, is_fastq, outputs)
+        crate::cli::run_file(py, self, input_path, is_fastq, outputs)
     }
 }
 

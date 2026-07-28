@@ -19,6 +19,7 @@ fn _pyfgs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<FastaReader>()?;
     m.add_class::<FastqReader>()?;
     m.add_class::<Gene>()?;
+    m.add_class::<GeneBatch>()?;
     m.add_class::<GeneFinder>()?;
     m.add_class::<Mutation>()?;
     m.add_class::<BedWriter>()?;

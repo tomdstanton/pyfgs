@@ -184,3 +184,24 @@ def test_rust_file_writers():
             content = f.read()
             assert "source=ab initio" in content
             assert "test_contig" in content
+
+
+def test_find_genes_batch():
+    """Ensure the vectorized SoA GeneBatch works correctly."""
+    finder = pyfgs.GeneFinder(pyfgs.Model.Illumina10, whole_genome=False)
+    # Using _recA multiple times to simulate a batch
+    batch = finder.find_genes_batch([_recA, _recA])
+
+    assert hasattr(batch, "sequence_indices")
+    assert hasattr(batch, "starts")
+    assert hasattr(batch, "insertions_flat")
+
+    import numpy as np
+
+    assert isinstance(batch.sequence_indices, np.ndarray)
+    assert isinstance(batch.starts, np.ndarray)
+    assert isinstance(batch.insertions_flat, np.ndarray)
+
+    assert len(batch.starts) > 0
+    assert len(batch.sequence_indices) == len(batch.starts)
+    assert len(batch.insertions_offsets) == len(batch.starts) + 1

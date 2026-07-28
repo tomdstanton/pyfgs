@@ -118,7 +118,7 @@ def test_pyrodigal_accuracy(benchmark, genomes, genome_name):
 def test_pyfgs_accuracy(benchmark, genomes, genome_name):
     """Benchmarks pyfgs speed and calculates accuracy."""
     contigs, true_stops = genomes[genome_name]
-    finder = pyfgs.GeneFinder(pyfgs.Model.Complete, whole_genome=False)
+    finder = pyfgs.GeneFinder(pyfgs.Model.Complete, whole_genome=True)
 
     def run_inference():
         stops = set()
@@ -137,4 +137,43 @@ def test_pyfgs_accuracy(benchmark, genomes, genome_name):
     fp = len(pyfgs_stops - true_stops)
 
     print(f"\n--- pyfgs Accuracy for {genome_name} ---")
+    print(f"Ground Truth: {len(true_stops)} | Perfect Matches: {tp} | Missed: {fn} | Extra: {fp}")
+
+
+@pytest.mark.parametrize("genome_name", ["E_coli", "S_aureus", "P_aeruginosa"])
+def test_pyfgs_batch_accuracy(benchmark, genomes, genome_name):
+    """Benchmarks pyfgs (vectorized) speed and calculates accuracy."""
+    contigs, true_stops = genomes[genome_name]
+    finder = pyfgs.GeneFinder(pyfgs.Model.Complete, whole_genome=True)
+
+    def run_inference():
+        stops = set()
+
+        # We need a list of ids to map back from batch.sequence_indices
+        ids = []
+        seqs = []
+        for seq_id, seq_bytes in contigs:
+            ids.append(seq_id)
+            seqs.append(seq_bytes)
+
+        batch = finder.find_genes_batch(seqs)
+
+        # Iterate over numpy arrays.
+        # Using enumerate or zipping numpy arrays is fast.
+        for seq_idx, start, end, strand in zip(
+            batch.sequence_indices, batch.starts, batch.ends, batch.strands
+        ):
+            stop = end if strand == 1 else start
+            stops.add((ids[seq_idx], strand, stop))
+
+        return stops
+
+    pyfgs_stops = benchmark(run_inference)
+
+    # Calculate Accuracy
+    tp = len(pyfgs_stops & true_stops)
+    fn = len(true_stops - pyfgs_stops)
+    fp = len(pyfgs_stops - true_stops)
+
+    print(f"\n--- pyfgs_batch Accuracy for {genome_name} ---")
     print(f"Ground Truth: {len(true_stops)} | Perfect Matches: {tp} | Missed: {fn} | Extra: {fp}")

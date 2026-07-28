@@ -57,6 +57,66 @@ allowing you to slice sequence arrays immediately without wrestling with 1-based
 standardized files, it includes heavily optimized, native-Rust context managers to stream perfectly compliant VCF, BED,
 GFF3, and FASTA files directly to disk without bloating your RAM.
 
+**Blazing Fast**
+
+Thanks to the memory-safe zero-copy architecture and multi-threading through `Rayon`, `pyfgs` can outperform even the fastest SIMD-optimized Gene Finders (e.g. `pyrodigal`) in Whole Genome mode—especially on highly fragmented assemblies and metagenomes.
+
+
+## 🚀 Usage
+
+### 1. Vectorized Batch Prediction
+
+If you are a power user integrating gene prediction into a larger Python pipeline, `pyfgs` offers a vectorized, zero-copy NumPy API that sidesteps Python object overhead completely.
+
+```python
+import pyfgs
+
+# 1. Initialize the gene finder 
+# By default, this loads the Illumina HMM model (error-tolerant).
+finder = pyfgs.GeneFinder()
+
+# 2. Extract byte strings of sequence
+# Notice we pass bytes (b""), not strings, to avoid encoding overhead.
+sequences = [
+    b"ATGCCCGGGAAATTTTGACCC",
+    b"ATGAAAAAA",
+]
+
+# 3. Predict genes across all sequences in parallel (releasing the GIL)
+batch = finder.find_genes_batch(sequences)
+
+# 4. Access predictions as flat, 1-dimensional NumPy arrays (Structure-of-Arrays)
+print(batch.starts)          # array([0, ...])
+print(batch.ends)            # array([18, ...])
+print(batch.strands)         # array([1, ...])
+print(batch.scores)          # array([12.34, ...])
+
+# 5. Fields with variable counts per gene (e.g. insertions/deletions) 
+# are exposed as flat arrays alongside parallel "offsets" arrays 
+# defining the slice boundaries (i.e. ragged arrays).
+print(batch.insertions_offsets)
+print(batch.insertions_flat)         
+```
+
+### 2. High-Performance I/O Pipeline
+
+If your goal is just to read a FASTA file and output standard format files (GFF3, BED, etc), `pyfgs` provides a pure-Rust IO pipeline that bypasses Python entirely. This is what the `pyfgs` CLI uses under the hood.
+
+```python
+import pyfgs
+
+finder = pyfgs.GeneFinder()
+
+# Stream directly from disk to disk using Rust native threading
+finder.run_file(
+    input_path="input.fasta",
+    is_fastq=False,
+    outputs={
+        "gff3": "output.gff3",
+        "faa": "output.faa",
+    }
+)
+```
 
 ## 🔧 Installing
 

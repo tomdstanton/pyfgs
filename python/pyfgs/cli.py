@@ -286,7 +286,7 @@ def main():
     outputs_map = active_outputs
 
     try:
-        finder.run_cli_pipeline(args.seq, is_fastq, outputs_map)
+        finder.run_file(args.seq, is_fastq, outputs_map)
     except Exception as e:
         sys.stderr.write(f"Error during execution: {e}\n")
         sys.exit(1)

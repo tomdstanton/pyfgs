@@ -22,6 +22,8 @@ This section provides the complete API documentation for `pyfgs`, parsed directl
 
 ::: pyfgs.Gene
 
+::: pyfgs.GeneBatch
+
 ::: pyfgs.Mutation
 
 ## I/O

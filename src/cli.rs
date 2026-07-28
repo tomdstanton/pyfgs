@@ -192,7 +192,7 @@ fn process_chunk(
     }).collect()
 }
 
-pub fn run_cli_pipeline(
+pub fn run_file(
     py: Python<'_>,
     finder: &GeneFinder,
     input_path: &str,

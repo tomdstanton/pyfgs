@@ -3,9 +3,10 @@
 
 import builtins
 import enum
+import typing
+
 import numpy
 import numpy.typing
-import typing
 
 __all__ = [
     "BedWriter",
@@ -14,6 +15,7 @@ __all__ = [
     "FastqReader",
     "FnaWriter",
     "Gene",
+    "GeneBatch",
     "GeneFinder",
     "Gff3Writer",
     "HmmGlobal",
@@ -32,9 +34,9 @@ class BedWriter:
     def __enter__(self) -> BedWriter: ...
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None: ...
     def write_record(
         self, genes: typing.Sequence[Gene], header: builtins.str, sequence: bytes
@@ -49,9 +51,9 @@ class FaaWriter:
     def __enter__(self) -> FaaWriter: ...
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None: ...
     def write_record(self, genes: typing.Sequence[Gene], header: builtins.str) -> None: ...
 
@@ -94,9 +96,9 @@ class FnaWriter:
     def __enter__(self) -> FnaWriter: ...
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None: ...
     def write_record(self, genes: typing.Sequence[Gene], header: builtins.str) -> None: ...
 
@@ -126,12 +128,72 @@ class Gene:
         """
 
 @typing.final
+class GeneBatch:
+    r"""
+    A vectorized structure representing a batch of gene predictions.
+
+    This structure uses a Structure-of-Arrays (SoA) layout. Fields that have variable
+    counts per gene (e.g. insertions and deletions) are exposed as flat arrays alongside
+    parallel "offsets" arrays defining the slice boundaries (i.e. ragged arrays).
+    """
+    @property
+    def sequence_indices(self) -> numpy.typing.NDArray[numpy.uint64]:
+        r"""
+        Array of shape (N,) containing the index of the sequence in the batch for each gene.
+        """
+    @property
+    def starts(self) -> numpy.typing.NDArray[numpy.uint64]:
+        r"""
+        Array of shape (N,) containing the start coordinates of each gene.
+        """
+    @property
+    def ends(self) -> numpy.typing.NDArray[numpy.uint64]:
+        r"""
+        Array of shape (N,) containing the end coordinates of each gene.
+        """
+    @property
+    def strands(self) -> numpy.typing.NDArray[numpy.int8]:
+        r"""
+        Array of shape (N,) containing the strands of each gene (1 for forward, -1 for reverse).
+        """
+    @property
+    def frames(self) -> numpy.typing.NDArray[numpy.uint64]:
+        r"""
+        Array of shape (N,) containing the frame of each gene.
+        """
+    @property
+    def scores(self) -> numpy.typing.NDArray[numpy.float64]:
+        r"""
+        Array of shape (N,) containing the prediction scores of each gene.
+        """
+    @property
+    def insertions_flat(self) -> numpy.typing.NDArray[numpy.uint64]:
+        r"""
+        Flat array containing all insertion coordinates across all genes.
+        """
+    @property
+    def insertions_offsets(self) -> numpy.typing.NDArray[numpy.uint64]:
+        r"""
+        Array of shape (N+1,) containing the slice offsets for `insertions_flat`.
+        """
+    @property
+    def deletions_flat(self) -> numpy.typing.NDArray[numpy.uint64]:
+        r"""
+        Flat array containing all deletion coordinates across all genes.
+        """
+    @property
+    def deletions_offsets(self) -> numpy.typing.NDArray[numpy.uint64]:
+        r"""
+        Array of shape (N+1,) containing the slice offsets for `deletions_flat`.
+        """
+
+@typing.final
 class GeneFinder:
     r"""
     The main engine for finding genes, holding the HMM in memory.
     """
     def __new__(
-        cls, model: Model, whole_genome: typing.Optional[builtins.bool] = None
+        cls, model: Model, whole_genome: builtins.bool | None = None
     ) -> GeneFinder:
         r"""
         Initialize the GeneFinder.
@@ -162,9 +224,7 @@ class GeneFinder:
         Returns:
             List[Gene]: A list of predicted Gene objects.
         """
-    def find_genes_batch(
-        self, sequences: typing.Sequence[bytes]
-    ) -> builtins.list[builtins.list[Gene]]:
+    def find_genes_batch(self, sequences: typing.Sequence[bytes]) -> GeneBatch:
         r"""
         Predict open reading frames for a batch of DNA sequences using Rayon.
 
@@ -174,7 +234,7 @@ class GeneFinder:
         Returns:
             List[List[Gene]]: A list of predicted Gene objects for each sequence.
         """
-    def run_cli_pipeline(
+    def run_file(
         self,
         input_path: builtins.str,
         is_fastq: builtins.bool,
@@ -198,9 +258,9 @@ class Gff3Writer:
     def __enter__(self) -> Gff3Writer: ...
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None: ...
     def write_record(
         self, genes: typing.Sequence[Gene], header: builtins.str, sequence: bytes
@@ -314,9 +374,9 @@ class VcfWriter:
         """
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None:
         r"""
         Context manager exit (`__exit__`). Flushes and closes the file.

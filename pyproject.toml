@@ -47,7 +47,11 @@ docs = [
     "zensical",
     "mkdocstrings[python]",
 ]
-dev = [{include-group = "test"}, {include-group = "docs"}]
+dev = [
+    {include-group = "test"},
+    {include-group = "docs"},
+    "flameprof>=0.4",
+]
 benches = [
     "pyrodigal>=3.7.1",
     "pytest-benchmark>=5.2.3",

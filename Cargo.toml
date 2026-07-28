@@ -24,3 +24,14 @@ numpy = "0.29.0"
 name = "stub_gen"
 path = "src/bin/stub_gen.rs"
 required-features = []
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true
+
+[[bin]]
+name = "bin_pure"
+path = "src/bin_pure.rs"
+required-features = []
