@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785140836203,
+  "lastUpdate": 1785213222341,
   "repoUrl": "https://github.com/tomdstanton/pyfgs",
   "entries": {
     "Benchmark": [
@@ -2112,6 +2112,93 @@ window.BENCHMARK_DATA = {
             "unit": "iter/sec",
             "range": "stddev: 0.0198501955159195",
             "extra": "mean: 1.967781922999984 sec\nrounds: 5"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "tomdstanton@gmail.com",
+            "name": "Tom Stanton",
+            "username": "tomdstanton"
+          },
+          "committer": {
+            "email": "tomdstanton@gmail.com",
+            "name": "Tom Stanton",
+            "username": "tomdstanton"
+          },
+          "distinct": true,
+          "id": "6ca0730ec75004d46dc40da2481b89ff52933076",
+          "message": "feat: introduce vectorized SoA batch prediction API and optimize performance\n\n- Implemented `find_genes_batch` returning a `GeneBatch` object using a Structure-of-Arrays (SoA) layout with ragged arrays for indels, allowing zero-copy vectorized access from Python.\n- Optimized sequence parsing in Rust by removing redundant ASCII whitespace filtering and uppercase conversion, leveraging the raw bytes directly for a ~3-5ms speedup.\n- Enabled `lto = \"fat\"` and `codegen-units = 1` in `Cargo.toml` release profile for maximum compiler optimization.\n- Updated benchmarks to evaluate `whole_genome=True`, reflecting realistic usage for completed genomes and demonstrating superior performance against `pyrodigal`.\n- Renamed clunky `run_cli_pipeline` to `run_file` across Rust and Python CLI bindings.\n- Updated Zensical documentation and Python stubs to document the new `GeneBatch` API and performance characteristics.",
+          "timestamp": "2026-07-28T14:25:11+10:00",
+          "tree_id": "40a7de4901b76a024ceccf3868956b233ef63760",
+          "url": "https://github.com/tomdstanton/pyfgs/commit/6ca0730ec75004d46dc40da2481b89ff52933076"
+        },
+        "date": 1785213222082,
+        "tool": "pytest",
+        "benches": [
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyrodigal_accuracy[E_coli]",
+            "value": 0.5766231740791707,
+            "unit": "iter/sec",
+            "range": "stddev: 0.006309660584285612",
+            "extra": "mean: 1.7342348433999972 sec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyrodigal_accuracy[S_aureus]",
+            "value": 1.4744259174731853,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0025286369005131865",
+            "extra": "mean: 678.2300745999919 msec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyrodigal_accuracy[P_aeruginosa]",
+            "value": 0.4090864051797523,
+            "unit": "iter/sec",
+            "range": "stddev: 0.00635247154950793",
+            "extra": "mean: 2.4444713569999976 sec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyfgs_accuracy[E_coli]",
+            "value": 0.7723177742285184,
+            "unit": "iter/sec",
+            "range": "stddev: 0.009859145436892409",
+            "extra": "mean: 1.2948038143999951 sec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyfgs_accuracy[S_aureus]",
+            "value": 1.0812020969343155,
+            "unit": "iter/sec",
+            "range": "stddev: 0.009823135937038983",
+            "extra": "mean: 924.8964673999808 msec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyfgs_accuracy[P_aeruginosa]",
+            "value": 0.7087103404570076,
+            "unit": "iter/sec",
+            "range": "stddev: 0.0029199039546203283",
+            "extra": "mean: 1.4110137004000194 sec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyfgs_batch_accuracy[E_coli]",
+            "value": 0.7794974268258846,
+            "unit": "iter/sec",
+            "range": "stddev: 0.009068129637512986",
+            "extra": "mean: 1.2828778718000422 sec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyfgs_batch_accuracy[S_aureus]",
+            "value": 1.0861036432700293,
+            "unit": "iter/sec",
+            "range": "stddev: 0.004513148898043966",
+            "extra": "mean: 920.7224431999975 msec\nrounds: 5"
+          },
+          {
+            "name": "benchmarks/bench_accuracy.py::test_pyfgs_batch_accuracy[P_aeruginosa]",
+            "value": 0.7099250179155451,
+            "unit": "iter/sec",
+            "range": "stddev: 0.004588751219028123",
+            "extra": "mean: 1.408599464400004 sec\nrounds: 5"
           }
         ]
       }
