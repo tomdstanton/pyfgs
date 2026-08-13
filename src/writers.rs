@@ -19,15 +19,19 @@ pub struct BedWriter {
 impl BedWriter {
     #[new]
     fn new(output_path: &str) -> PyResult<Self> {
-        let file = File::create(output_path)
-            .map_err(|e| pyo3::exceptions::PyIOError::new_err(format!("Could not create BED: {}", e)))?;
+        let file = File::create(output_path).map_err(|e| {
+            pyo3::exceptions::PyIOError::new_err(format!("Could not create BED: {}", e))
+        })?;
         let mut writer = BufWriter::new(file);
 
         let version = env!("CARGO_PKG_VERSION");
         writeln!(writer, "# source=ab initio prediction: pyfgs v{}", version)?;
 
         // Added the 7th column for MUTATIONS
-        writeln!(writer, "# CHROM\tSTART\tEND\tNAME\tSCORE\tSTRAND\tMUTATIONS")?;
+        writeln!(
+            writer,
+            "# CHROM\tSTART\tEND\tNAME\tSCORE\tSTRAND\tMUTATIONS"
+        )?;
 
         Ok(Self { writer })
     }
@@ -47,7 +51,12 @@ impl BedWriter {
     }
 
     // Now requires the sequence byte slice to extract mutations
-    fn write_record(&mut self, genes: Vec<PyRef<Gene>>, header: &str, sequence: &Bound<'_, PyBytes>) -> PyResult<()> {
+    fn write_record(
+        &mut self,
+        genes: Vec<PyRef<Gene>>,
+        header: &str,
+        sequence: &Bound<'_, PyBytes>,
+    ) -> PyResult<()> {
         let sequence = sequence.as_bytes();
         for (g_idx, gene) in genes.iter().enumerate() {
             let gene_id = format!("{}_FGS_{}", header, g_idx + 1);
@@ -60,10 +69,15 @@ impl BedWriter {
             let mut_info = if mutations.is_empty() {
                 ".".to_string() // Standard VCF/BED placeholder for 'empty'
             } else {
-                let formatted_muts: Vec<String> = mutations.iter().map(|m| {
-                    format!("pos={};type={};codon={};note={}",
-                        m.pos, m.mut_type, m.codon_idx, m.annotation)
-                }).collect();
+                let formatted_muts: Vec<String> = mutations
+                    .iter()
+                    .map(|m| {
+                        format!(
+                            "pos={};type={};codon={};note={}",
+                            m.pos, m.mut_type, m.codon_idx, m.annotation
+                        )
+                    })
+                    .collect();
 
                 // Join multiple mutations with a comma so they stay safely in column 7
                 formatted_muts.join(",")
@@ -92,16 +106,29 @@ impl VcfWriter {
     /// Opens the file and writes the VCF headers.
     #[new]
     fn new(output_path: &str) -> PyResult<Self> {
-        let file = File::create(output_path)
-            .map_err(|e| pyo3::exceptions::PyIOError::new_err(format!("Could not create VCF: {}", e)))?;
+        let file = File::create(output_path).map_err(|e| {
+            pyo3::exceptions::PyIOError::new_err(format!("Could not create VCF: {}", e))
+        })?;
         let mut writer = BufWriter::new(file);
 
         writeln!(writer, "##fileformat=VCFv4.2")?;
         writeln!(writer, "##source=pyfgs_ab_initio")?;
-        writeln!(writer, "##INFO=<ID=TYPE,Number=1,Type=String,Description=\"Type of sequence discrepancy\">")?;
-        writeln!(writer, "##INFO=<ID=GENE,Number=1,Type=String,Description=\"Predicted Gene ID\">")?;
-        writeln!(writer, "##INFO=<ID=CODON,Number=1,Type=Integer,Description=\"1-based codon index of the frameshift\">")?;
-        writeln!(writer, "##INFO=<ID=FGS_MUT,Number=1,Type=String,Description=\"Snippy-style AA and DNA translation shift\">")?;
+        writeln!(
+            writer,
+            "##INFO=<ID=TYPE,Number=1,Type=String,Description=\"Type of sequence discrepancy\">"
+        )?;
+        writeln!(
+            writer,
+            "##INFO=<ID=GENE,Number=1,Type=String,Description=\"Predicted Gene ID\">"
+        )?;
+        writeln!(
+            writer,
+            "##INFO=<ID=CODON,Number=1,Type=Integer,Description=\"1-based codon index of the frameshift\">"
+        )?;
+        writeln!(
+            writer,
+            "##INFO=<ID=FGS_MUT,Number=1,Type=String,Description=\"Snippy-style AA and DNA translation shift\">"
+        )?;
         writeln!(writer, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO")?;
 
         Ok(Self { writer })
@@ -124,13 +151,22 @@ impl VcfWriter {
     }
 
     /// Writes the frameshift variants for a single contig/sequence.
-    fn write_record(&mut self, genes: Vec<PyRef<Gene>>, header: &str, sequence: &Bound<'_, PyBytes>) -> PyResult<()> {
+    fn write_record(
+        &mut self,
+        genes: Vec<PyRef<Gene>>,
+        header: &str,
+        sequence: &Bound<'_, PyBytes>,
+    ) -> PyResult<()> {
         let sequence = sequence.as_bytes();
         for (g_idx, gene) in genes.iter().enumerate() {
             let mutations = gene.extract_mutations(sequence);
 
             for muta in mutations {
-                let type_name = if muta.mut_type == "ins" { "insertion" } else { "deletion" };
+                let type_name = if muta.mut_type == "ins" {
+                    "insertion"
+                } else {
+                    "deletion"
+                };
 
                 // We construct the SnpEff ANN field directly in the writeln! macro.
                 // Format: Allele | Annotation | Impact | Gene_Name | Gene_ID | Feature_Type | ...
@@ -165,13 +201,18 @@ pub struct Gff3Writer {
 impl Gff3Writer {
     #[new]
     fn new(output_path: &str) -> PyResult<Self> {
-        let file = File::create(output_path)
-            .map_err(|e| pyo3::exceptions::PyIOError::new_err(format!("Could not create GFF3: {}", e)))?;
+        let file = File::create(output_path).map_err(|e| {
+            pyo3::exceptions::PyIOError::new_err(format!("Could not create GFF3: {}", e))
+        })?;
         let mut writer = BufWriter::new(file);
 
         let version = env!("CARGO_PKG_VERSION");
         writeln!(writer, "##gff-version 3")?;
-        writeln!(writer, "#source-ontology=ab initio prediction: pyfgs v{}", version)?;
+        writeln!(
+            writer,
+            "#source-ontology=ab initio prediction: pyfgs v{}",
+            version
+        )?;
 
         Ok(Self { writer })
     }
@@ -190,7 +231,12 @@ impl Gff3Writer {
         Ok(())
     }
 
-    fn write_record(&mut self, genes: Vec<PyRef<Gene>>, header: &str, sequence: &Bound<'_, PyBytes>) -> PyResult<()> {
+    fn write_record(
+        &mut self,
+        genes: Vec<PyRef<Gene>>,
+        header: &str,
+        sequence: &Bound<'_, PyBytes>,
+    ) -> PyResult<()> {
         let sequence = sequence.as_bytes();
         let version = env!("CARGO_PKG_VERSION");
         let source_name = format!("pyfgs_v{}", version);
@@ -221,10 +267,20 @@ impl Gff3Writer {
             } else {
                 // Frameshifted Gene -> INSDC Pseudogene Flagging
                 // We format a human-readable note for the researchers reviewing the file
-                let notes: Vec<String> = mutations.iter().map(|m| {
-                    let mut_name = if m.mut_type == "ins" { "insertion" } else { "deletion" };
-                    format!("Frameshift {} at pos {} (codon {})", mut_name, m.pos, m.codon_idx)
-                }).collect();
+                let notes: Vec<String> = mutations
+                    .iter()
+                    .map(|m| {
+                        let mut_name = if m.mut_type == "ins" {
+                            "insertion"
+                        } else {
+                            "deletion"
+                        };
+                        format!(
+                            "Frameshift {} at pos {} (codon {})",
+                            mut_name, m.pos, m.codon_idx
+                        )
+                    })
+                    .collect();
 
                 let note_str = notes.join(",");
 
@@ -258,14 +314,24 @@ pub struct FnaWriter {
 impl FnaWriter {
     #[new]
     fn new(output_path: &str) -> PyResult<Self> {
-        let file = File::create(output_path)
-            .map_err(|e| pyo3::exceptions::PyIOError::new_err(format!("Could not create FNA: {}", e)))?;
-        Ok(Self { writer: BufWriter::new(file) })
+        let file = File::create(output_path).map_err(|e| {
+            pyo3::exceptions::PyIOError::new_err(format!("Could not create FNA: {}", e))
+        })?;
+        Ok(Self {
+            writer: BufWriter::new(file),
+        })
     }
 
-    fn __enter__(slf: Py<Self>) -> Py<Self> { slf }
+    fn __enter__(slf: Py<Self>) -> Py<Self> {
+        slf
+    }
 
-    fn __exit__(&mut self, _exc_type: Option<Bound<'_, PyAny>>, _exc_value: Option<Bound<'_, PyAny>>, _traceback: Option<Bound<'_, PyAny>>) -> PyResult<()> {
+    fn __exit__(
+        &mut self,
+        _exc_type: Option<Bound<'_, PyAny>>,
+        _exc_value: Option<Bound<'_, PyAny>>,
+        _traceback: Option<Bound<'_, PyAny>>,
+    ) -> PyResult<()> {
         self.writer.flush()?;
         Ok(())
     }
@@ -278,7 +344,12 @@ impl FnaWriter {
             writeln!(
                 self.writer,
                 ">{}_FGS_{} {}:{}-{} strand={}",
-                header, g_idx + 1, header, gene.start + 1, gene.end, strand_char
+                header,
+                g_idx + 1,
+                header,
+                gene.start + 1,
+                gene.end,
+                strand_char
             )?;
 
             // Write the raw bytes directly without any string formatting or wrapping!
@@ -301,14 +372,24 @@ pub struct FaaWriter {
 impl FaaWriter {
     #[new]
     fn new(output_path: &str) -> PyResult<Self> {
-        let file = File::create(output_path)
-            .map_err(|e| pyo3::exceptions::PyIOError::new_err(format!("Could not create FAA: {}", e)))?;
-        Ok(Self { writer: BufWriter::new(file) })
+        let file = File::create(output_path).map_err(|e| {
+            pyo3::exceptions::PyIOError::new_err(format!("Could not create FAA: {}", e))
+        })?;
+        Ok(Self {
+            writer: BufWriter::new(file),
+        })
     }
 
-    fn __enter__(slf: Py<Self>) -> Py<Self> { slf }
+    fn __enter__(slf: Py<Self>) -> Py<Self> {
+        slf
+    }
 
-    fn __exit__(&mut self, _exc_type: Option<Bound<'_, PyAny>>, _exc_value: Option<Bound<'_, PyAny>>, _traceback: Option<Bound<'_, PyAny>>) -> PyResult<()> {
+    fn __exit__(
+        &mut self,
+        _exc_type: Option<Bound<'_, PyAny>>,
+        _exc_value: Option<Bound<'_, PyAny>>,
+        _traceback: Option<Bound<'_, PyAny>>,
+    ) -> PyResult<()> {
         self.writer.flush()?;
         Ok(())
     }
@@ -320,7 +401,12 @@ impl FaaWriter {
             writeln!(
                 self.writer,
                 ">{}_FGS_{} {}:{}-{} strand={}",
-                header, g_idx + 1, header, gene.start + 1, gene.end, strand_char
+                header,
+                g_idx + 1,
+                header,
+                gene.start + 1,
+                gene.end,
+                strand_char
             )?;
 
             self.writer.write_all(&gene.get_aa_bytes())?;

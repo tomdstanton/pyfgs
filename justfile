@@ -7,46 +7,84 @@ set shell := ["bash", "-uc"]
 default:
     @just --list
 
-# Clean Python virtual environments
+# Clean build artifacts and cache
 clean:
-    rm -rf site
+    rm -rf site target/wheels
     # rm -rf .venv
     find . -type d -name "__pycache__" -exec rm -rf {} +
     find . -type d -name ".pytest_cache" -exec rm -rf {} +
+    find . -type d -name ".karva_cache" -exec rm -rf {} +
 
+# Install dependencies, compile Rust extension in dev mode, and sync stubs
 install: clean
     uv sync --all-groups
     cargo run --bin stub_gen --no-default-features
     uv run python scripts/sync_stubs.py
     uvx ruff format python/pyfgs/__init__.py python/pyfgs/__init__.pyi python/pyfgs/_pyfgs/__init__.pyi
 
-# Run the test suite
+# Run the test suite using karva
 test +args="": install
-    uv run pytest tests/ {{args}}
+    uvx --with . --with pytest karva test tests/ {{args}}
 
-# Run tests with coverage
+# Run tests with coverage using karva
 test-cov +args="": install
-    uv run --group test pytest -v tests/ --cov=python/pyfgs --cov-report=term-missing --cov-report=xml {{args}}
+    uvx --with . --with pytest --with pytest-cov karva test tests/ {{args}}
 
 # Run benchmarks
 benchmark: install
     uv run --group benches pytest benchmarks/bench_accuracy.py --benchmark-json=benchmark-data.json
 
+# --- Formatting & Linting ---
+
+# Format both Python and Rust code
+fmt: fmt-python fmt-rust
+
+# Check Python and Rust formatting
+fmt-check: fmt-check-python fmt-check-rust
+
+# Lint both Python and Rust code
+lint: lint-python lint-rust
+
 # Format Python code
-fmt:
+fmt-python:
     uvx ruff format .
 
 # Check Python formatting
-fmt-check:
+fmt-check-python:
     uvx ruff format --check .
 
 # Lint Python code
-lint:
-    uvx ruff check .
-    uvx ty check .
+lint-python:
+    -uvx ruff check .
+    -uvx ty check .
+
+# Format Rust code
+fmt-rust:
+    cargo fmt
+
+# Check Rust formatting
+fmt-check-rust:
+    cargo fmt --all -- --check
+
+# Lint Rust code
+lint-rust:
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+# --- CI & Build ---
 
 # Run the full CI pipeline locally (format check, lint, test)
 ci: fmt-check lint test-cov
+
+# Build release wheels using maturin
+build-wheels:
+    rm -rf target/wheels
+    uvx maturin build --release
+
+# Set version in Cargo.toml (useful in CI or releases)
+set-version VERSION:
+    uv run python -c "import re; content = open('Cargo.toml').read(); content = re.sub(r'^version\s*=\s*\".*\"', 'version = \"' + '{{VERSION}}'.lstrip('v') + '\"', content, flags=re.MULTILINE); open('Cargo.toml', 'w').write(content)"
+
+# --- Documentation ---
 
 prep-docs: install
     uv run scripts/generate_cli_docs.py

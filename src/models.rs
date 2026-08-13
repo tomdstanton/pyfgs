@@ -1,13 +1,13 @@
-use std::path::PathBuf;
 use numpy::PyArray1;
+use std::path::PathBuf;
 
 use pyo3::prelude::*;
-use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods};
 use pyo3::types::PyBytes;
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods};
 
+use frag_gene_scan_rs::dna::{ANTI_CODON_CODE, CODON_CODE, Nuc, count_cg_content, trinucleotide};
 use frag_gene_scan_rs::hmm::{self, Global, Local};
 use frag_gene_scan_rs::viterbi::viterbi;
-use frag_gene_scan_rs::dna::{Nuc, count_cg_content, trinucleotide, CODON_CODE, ANTI_CODON_CODE};
 
 use rayon::prelude::*;
 
@@ -79,18 +79,24 @@ impl Gene {
         if self.forward_strand {
             self.dna_nucs.iter().map(|&n| u8::from(n)).collect()
         } else {
-            self.dna_nucs.iter().rev().map(|&n| u8::from(n.rc())).collect()
+            self.dna_nucs
+                .iter()
+                .rev()
+                .map(|&n| u8::from(n.rc()))
+                .collect()
         }
     }
 
     #[inline]
     pub fn get_aa_bytes(&self) -> Vec<u8> {
         let mut protein: Vec<u8> = if self.forward_strand {
-            self.dna_nucs.chunks_exact(3)
+            self.dna_nucs
+                .chunks_exact(3)
                 .map(|c| trinucleotide(c).map(|i| CODON_CODE[i]).unwrap_or(b'X'))
                 .collect()
         } else {
-            self.dna_nucs.rchunks_exact(3)
+            self.dna_nucs
+                .rchunks_exact(3)
                 .map(|c| trinucleotide(c).map(|i| ANTI_CODON_CODE[i]).unwrap_or(b'X'))
                 .collect()
         };
@@ -102,12 +108,16 @@ impl Gene {
         if self.whole_genome {
             if self.forward_strand {
                 let s = trinucleotide(&self.dna_nucs);
-                if s == trinucleotide(&[Nuc::G, Nuc::T, Nuc::G]) || s == trinucleotide(&[Nuc::T, Nuc::T, Nuc::G]) {
+                if s == trinucleotide(&[Nuc::G, Nuc::T, Nuc::G])
+                    || s == trinucleotide(&[Nuc::T, Nuc::T, Nuc::G])
+                {
                     protein[0] = b'M';
                 }
             } else if self.dna_nucs.len() >= 3 {
                 let s = trinucleotide(&self.dna_nucs[self.dna_nucs.len() - 3..]);
-                if s == trinucleotide(&[Nuc::C, Nuc::A, Nuc::C]) || s == trinucleotide(&[Nuc::C, Nuc::A, Nuc::A]) {
+                if s == trinucleotide(&[Nuc::C, Nuc::A, Nuc::C])
+                    || s == trinucleotide(&[Nuc::C, Nuc::A, Nuc::A])
+                {
                     protein[0] = b'M';
                 }
             }
@@ -130,20 +140,27 @@ impl Gene {
                 let effective_cds_pos = (pos.saturating_sub(self.start)) - ins_count + del_count;
                 (effective_cds_pos / 3) + 1
             } else {
-                let ins_count = self.insertions.len() - self.insertions.partition_point(|&p| p <= pos);
+                let ins_count =
+                    self.insertions.len() - self.insertions.partition_point(|&p| p <= pos);
                 let del_count = self.deletions.len() - self.deletions.partition_point(|&p| p < pos);
-                let effective_cds_pos = (self.end.saturating_sub(1).saturating_sub(pos)) - ins_count + del_count;
+                let effective_cds_pos =
+                    (self.end.saturating_sub(1).saturating_sub(pos)) - ins_count + del_count;
                 (effective_cds_pos / 3) + 1
             }
         };
 
         // 1. Process Insertions
         for &pos in &self.insertions {
-            if pos == 0 { continue; }
+            if pos == 0 {
+                continue;
+            }
             let anchor_pos = pos - 1;
 
-            let ref_allele = String::from_utf8_lossy(&sequence[anchor_pos..=pos]).to_ascii_uppercase();
-            let alt_allele = (sequence[anchor_pos] as char).to_ascii_uppercase().to_string();
+            let ref_allele =
+                String::from_utf8_lossy(&sequence[anchor_pos..=pos]).to_ascii_uppercase();
+            let alt_allele = (sequence[anchor_pos] as char)
+                .to_ascii_uppercase()
+                .to_string();
             let codon_idx = get_codon_idx(pos);
             let annotation = format!("AA:X->fs|DNA:{}->{}", ref_allele, alt_allele);
 
@@ -161,10 +178,14 @@ impl Gene {
         let mut sorted_del = self.deletions.clone();
         sorted_del.sort_unstable();
         for &pos in &sorted_del {
-            if pos == 0 { continue; }
+            if pos == 0 {
+                continue;
+            }
             let anchor_pos = pos - 1;
 
-            let ref_allele = (sequence[anchor_pos] as char).to_ascii_uppercase().to_string();
+            let ref_allele = (sequence[anchor_pos] as char)
+                .to_ascii_uppercase()
+                .to_string();
             let alt_allele = format!("{}N", ref_allele);
             let codon_idx = get_codon_idx(pos);
             let annotation = format!("AA:X->fs|DNA:{}->{}", ref_allele, alt_allele);
@@ -188,8 +209,10 @@ impl Gene {
 #[pymethods]
 impl Gene {
     fn __repr__(&self) -> String {
-        format!("<Gene start={} end={} strand={} frame={} score={:.2}>",
-                self.start, self.end, self.strand, self.frame, self.score)
+        format!(
+            "<Gene start={} end={} strand={} frame={} score={:.2}>",
+            self.start, self.end, self.strand, self.frame, self.score
+        )
     }
 
     pub fn sequence<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
@@ -211,41 +234,51 @@ impl Gene {
 
 /// A vectorized structure representing a batch of gene predictions.
 ///
-/// This structure uses a Structure-of-Arrays (SoA) layout. Fields that have variable 
-/// counts per gene (e.g. insertions and deletions) are exposed as flat arrays alongside 
+/// This structure uses a Structure-of-Arrays (SoA) layout. Fields that have variable
+/// counts per gene (e.g. insertions and deletions) are exposed as flat arrays alongside
 /// parallel "offsets" arrays defining the slice boundaries (i.e. ragged arrays).
 #[gen_stub_pyclass]
 #[pyclass]
 pub struct GeneBatch {
     /// Array of shape (N,) containing the index of the sequence in the batch for each gene.
-    #[pyo3(get)] pub sequence_indices: Py<PyArray1<u64>>,
-    
+    #[pyo3(get)]
+    pub sequence_indices: Py<PyArray1<u64>>,
+
     /// Array of shape (N,) containing the start coordinates of each gene.
-    #[pyo3(get)] pub starts: Py<PyArray1<u64>>,
-    
+    #[pyo3(get)]
+    pub starts: Py<PyArray1<u64>>,
+
     /// Array of shape (N,) containing the end coordinates of each gene.
-    #[pyo3(get)] pub ends: Py<PyArray1<u64>>,
-    
+    #[pyo3(get)]
+    pub ends: Py<PyArray1<u64>>,
+
     /// Array of shape (N,) containing the strands of each gene (1 for forward, -1 for reverse).
-    #[pyo3(get)] pub strands: Py<PyArray1<i8>>,
-    
+    #[pyo3(get)]
+    pub strands: Py<PyArray1<i8>>,
+
     /// Array of shape (N,) containing the frame of each gene.
-    #[pyo3(get)] pub frames: Py<PyArray1<u64>>,
-    
+    #[pyo3(get)]
+    pub frames: Py<PyArray1<u64>>,
+
     /// Array of shape (N,) containing the prediction scores of each gene.
-    #[pyo3(get)] pub scores: Py<PyArray1<f64>>,
-    
+    #[pyo3(get)]
+    pub scores: Py<PyArray1<f64>>,
+
     /// Flat array containing all insertion coordinates across all genes.
-    #[pyo3(get)] pub insertions_flat: Py<PyArray1<u64>>,
-    
+    #[pyo3(get)]
+    pub insertions_flat: Py<PyArray1<u64>>,
+
     /// Array of shape (N+1,) containing the slice offsets for `insertions_flat`.
-    #[pyo3(get)] pub insertions_offsets: Py<PyArray1<u64>>,
-    
+    #[pyo3(get)]
+    pub insertions_offsets: Py<PyArray1<u64>>,
+
     /// Flat array containing all deletion coordinates across all genes.
-    #[pyo3(get)] pub deletions_flat: Py<PyArray1<u64>>,
-    
+    #[pyo3(get)]
+    pub deletions_flat: Py<PyArray1<u64>>,
+
     /// Array of shape (N+1,) containing the slice offsets for `deletions_flat`.
-    #[pyo3(get)] pub deletions_offsets: Py<PyArray1<u64>>,
+    #[pyo3(get)]
+    pub deletions_offsets: Py<PyArray1<u64>>,
 }
 
 /// The main engine for finding genes, holding the HMM in memory.
@@ -277,17 +310,20 @@ impl GeneFinder {
         // Infer whole_genome if the user didn't explicitly provide it
         let is_whole_genome = whole_genome.unwrap_or(model == Model::Complete);
 
-        let (global, locals) = hmm::get_train_from_file(
-            PathBuf::from(""),
-            PathBuf::from(model_name)
-        ).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(
-            format!("Failed to load internal model '{}'. Error: {}", model_name, e)
-        ))?;
+        let (global, locals) =
+            hmm::get_train_from_file(PathBuf::from(""), PathBuf::from(model_name)).map_err(
+                |e| {
+                    pyo3::exceptions::PyRuntimeError::new_err(format!(
+                        "Failed to load internal model '{}'. Error: {}",
+                        model_name, e
+                    ))
+                },
+            )?;
 
         Ok(GeneFinder {
             global,
             locals,
-            whole_genome: is_whole_genome
+            whole_genome: is_whole_genome,
         })
     }
 
@@ -300,7 +336,7 @@ impl GeneFinder {
     /// Exposes the underlying local (GC-specific) HMM parameters (read-only).
     #[pyo3(name = "local_models")]
     pub fn py_local_models(&self) -> Vec<HmmLocal> {
-        self.locals.iter().map(|l| HmmLocal::new(l)).collect()
+        self.locals.iter().map(HmmLocal::new).collect()
     }
 
     /// Predict open reading frames in a given DNA sequence.
@@ -315,10 +351,7 @@ impl GeneFinder {
     ///     List[Gene]: A list of predicted Gene objects.
     fn find_genes(&self, py: Python, sequence: &Bound<'_, PyBytes>) -> PyResult<Vec<Gene>> {
         let sequence = sequence.as_bytes();
-        let nuc_seq: Vec<Nuc> = sequence
-            .iter()
-            .map(|&b| Nuc::from(b))
-            .collect();
+        let nuc_seq: Vec<Nuc> = sequence.iter().map(|&b| Nuc::from(b)).collect();
 
         // 2. Run the heavy HMM inference without the GIL
         let prediction = py.detach(|| {
@@ -329,26 +362,32 @@ impl GeneFinder {
             viterbi(
                 &self.global,
                 local_model,
-                Vec::new(), 
+                Vec::new(),
                 nuc_seq,
-                self.whole_genome
+                self.whole_genome,
             )
         });
 
-        let genes = prediction.genes.into_iter().map(|g| {
-            Gene {
+        let genes = prediction
+            .genes
+            .into_iter()
+            .map(|g| Gene {
                 start: g.start.saturating_sub(1),
                 end: g.end,
                 strand: if g.forward_strand { 1 } else { -1 },
                 frame: g.frame,
                 score: g.score,
-                insertions: g.inserted.into_iter().map(|i| i.saturating_sub(1)).collect(),
+                insertions: g
+                    .inserted
+                    .into_iter()
+                    .map(|i| i.saturating_sub(1))
+                    .collect(),
                 deletions: g.deleted.into_iter().map(|i| i.saturating_sub(1)).collect(),
                 dna_nucs: g.dna,
                 forward_strand: g.forward_strand,
                 whole_genome: self.whole_genome,
-            }
-        }).collect();
+            })
+            .collect();
 
         Ok(genes)
     }
@@ -386,11 +425,9 @@ impl GeneFinder {
             raw_queries
                 .par_iter()
                 .map(|raw_q| {
-                    let sequence = unsafe { std::slice::from_raw_parts(raw_q.seq_ptr, raw_q.seq_len) };
-                    let nuc_seq: Vec<Nuc> = sequence
-                        .iter()
-                        .map(|&b| Nuc::from(b))
-                        .collect();
+                    let sequence =
+                        unsafe { std::slice::from_raw_parts(raw_q.seq_ptr, raw_q.seq_len) };
+                    let nuc_seq: Vec<Nuc> = sequence.iter().map(|&b| Nuc::from(b)).collect();
 
                     let cg = count_cg_content(&nuc_seq);
                     let local_model = &self.locals[cg];
@@ -398,10 +435,11 @@ impl GeneFinder {
                     viterbi(
                         &self.global,
                         local_model,
-                        Vec::new(), 
+                        Vec::new(),
                         nuc_seq,
-                        self.whole_genome
-                    ).genes
+                        self.whole_genome,
+                    )
+                    .genes
                 })
                 .collect()
         });

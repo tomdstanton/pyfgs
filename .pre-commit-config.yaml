@@ -1,0 +1,39 @@
+repos:
+- repo: local
+  hooks:
+  - id: ruff-format
+    name: ruff format
+    entry: uvx ruff format
+    language: system
+    types: [python]
+    require_serial: true
+  - id: ruff-check
+    name: ruff check
+    entry: uvx ruff check --fix
+    language: system
+    types: [python]
+    require_serial: true
+  - id: ty-check
+    name: ty check
+    entry: uvx ty check
+    language: system
+    types: [python]
+    pass_filenames: false
+  - id: karva-test
+    name: karva test
+    entry: uvx --with . --with pytest karva test
+    language: system
+    types: [python]
+    pass_filenames: false
+  - id: cargo-fmt
+    name: cargo fmt
+    entry: cargo fmt --all -- --check
+    language: system
+    types: [rust]
+    pass_filenames: false
+  - id: cargo-clippy
+    name: cargo clippy
+    entry: cargo clippy --workspace --all-targets --all-features -- -D warnings
+    language: system
+    types: [rust]
+    pass_filenames: false

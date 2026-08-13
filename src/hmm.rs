@@ -1,7 +1,7 @@
+use frag_gene_scan_rs::hmm::{Global, Local, PERIOD};
+use numpy::{IntoPyArray, PyArray1, PyArray2, PyArray3, ToPyArray};
 use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
-use numpy::{IntoPyArray, ToPyArray, PyArray1, PyArray2, PyArray3};
-use frag_gene_scan_rs::hmm::{Global, Local, PERIOD};
 
 // Constants from frag_gene_scan_rs
 const ACGT: usize = 4;
@@ -19,9 +19,11 @@ pub struct HmmGlobal {
 
 impl HmmGlobal {
     pub fn new(global: &Global) -> Self {
-        Self { global: global as *const Global }
+        Self {
+            global: global as *const Global,
+        }
     }
-    
+
     fn get(&self) -> &Global {
         unsafe { &*self.global }
     }
@@ -65,7 +67,9 @@ impl HmmGlobal {
         for row in &self.get().tr_ii {
             flat.extend_from_slice(row);
         }
-        numpy::ndarray::Array2::from_shape_vec([ACGT, ACGT], flat).unwrap().into_pyarray(py)
+        numpy::ndarray::Array2::from_shape_vec([ACGT, ACGT], flat)
+            .unwrap()
+            .into_pyarray(py)
     }
 
     /// Match-to-insertion transition matrix [4 x 4]
@@ -75,7 +79,9 @@ impl HmmGlobal {
         for row in &self.get().tr_mi {
             flat.extend_from_slice(row);
         }
-        numpy::ndarray::Array2::from_shape_vec([ACGT, ACGT], flat).unwrap().into_pyarray(py)
+        numpy::ndarray::Array2::from_shape_vec([ACGT, ACGT], flat)
+            .unwrap()
+            .into_pyarray(py)
     }
 }
 
@@ -88,9 +94,11 @@ pub struct HmmLocal {
 
 impl HmmLocal {
     pub fn new(local: &Local) -> Self {
-        Self { local: local as *const Local }
+        Self {
+            local: local as *const Local,
+        }
     }
-    
+
     fn get(&self) -> &Local {
         unsafe { &*self.local }
     }
@@ -109,7 +117,9 @@ impl HmmLocal {
                 flat.extend_from_slice(&local.e_m[i][j]);
             }
         }
-        numpy::ndarray::Array3::from_shape_vec([PERIOD, BI_ACGT, ACGT], flat).unwrap().into_pyarray(py)
+        numpy::ndarray::Array3::from_shape_vec([PERIOD, BI_ACGT, ACGT], flat)
+            .unwrap()
+            .into_pyarray(py)
     }
 
     /// Emission probabilities for match reverse states [PERIOD x BI_ACGT x ACGT]
@@ -122,7 +132,9 @@ impl HmmLocal {
                 flat.extend_from_slice(&local.e_m1[i][j]);
             }
         }
-        numpy::ndarray::Array3::from_shape_vec([PERIOD, BI_ACGT, ACGT], flat).unwrap().into_pyarray(py)
+        numpy::ndarray::Array3::from_shape_vec([PERIOD, BI_ACGT, ACGT], flat)
+            .unwrap()
+            .into_pyarray(py)
     }
 
     /// Background noncoding transition matrix [4 x 4]
@@ -133,7 +145,9 @@ impl HmmLocal {
         for row in &local.tr_rr {
             flat.extend_from_slice(row);
         }
-        numpy::ndarray::Array2::from_shape_vec([ACGT, ACGT], flat).unwrap().into_pyarray(py)
+        numpy::ndarray::Array2::from_shape_vec([ACGT, ACGT], flat)
+            .unwrap()
+            .into_pyarray(py)
     }
 
     /// Start state transitions [WINDOW x TRI_ACGT]
@@ -144,7 +158,9 @@ impl HmmLocal {
         for row in &local.tr_s {
             flat.extend_from_slice(row);
         }
-        numpy::ndarray::Array2::from_shape_vec([WINDOW, TRI_ACGT], flat).unwrap().into_pyarray(py)
+        numpy::ndarray::Array2::from_shape_vec([WINDOW, TRI_ACGT], flat)
+            .unwrap()
+            .into_pyarray(py)
     }
 
     /// End state transitions [WINDOW x TRI_ACGT]
@@ -155,9 +171,11 @@ impl HmmLocal {
         for row in &local.tr_e {
             flat.extend_from_slice(row);
         }
-        numpy::ndarray::Array2::from_shape_vec([WINDOW, TRI_ACGT], flat).unwrap().into_pyarray(py)
+        numpy::ndarray::Array2::from_shape_vec([WINDOW, TRI_ACGT], flat)
+            .unwrap()
+            .into_pyarray(py)
     }
-    
+
     /// Reverse start state transitions [WINDOW x TRI_ACGT]
     #[pyo3(signature = ())]
     fn tr_s1<'py>(&self, py: Python<'py>) -> Bound<'py, PyArray2<f64>> {
@@ -166,7 +184,9 @@ impl HmmLocal {
         for row in &local.tr_s1 {
             flat.extend_from_slice(row);
         }
-        numpy::ndarray::Array2::from_shape_vec([WINDOW, TRI_ACGT], flat).unwrap().into_pyarray(py)
+        numpy::ndarray::Array2::from_shape_vec([WINDOW, TRI_ACGT], flat)
+            .unwrap()
+            .into_pyarray(py)
     }
 
     /// Reverse end state transitions [WINDOW x TRI_ACGT]
@@ -177,6 +197,8 @@ impl HmmLocal {
         for row in &local.tr_e1 {
             flat.extend_from_slice(row);
         }
-        numpy::ndarray::Array2::from_shape_vec([WINDOW, TRI_ACGT], flat).unwrap().into_pyarray(py)
+        numpy::ndarray::Array2::from_shape_vec([WINDOW, TRI_ACGT], flat)
+            .unwrap()
+            .into_pyarray(py)
     }
 }

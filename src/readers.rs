@@ -2,9 +2,9 @@ use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
-use std::fs::File;
 use seq_io::fasta::{Reader, Record as FastaRecord};
 use seq_io::fastq::{self, Record as FastqRecord};
+use std::fs::File;
 
 /// A memory-efficient FASTA parser yielding (header, sequence).
 #[gen_stub_pyclass]
@@ -22,9 +22,15 @@ impl FastaReader {
     ///     path (str): The path to the FASTA file.
     #[new]
     fn new(path: String) -> PyResult<Self> {
-        let file = File::open(&path)
-            .map_err(|e| pyo3::exceptions::PyFileNotFoundError::new_err(format!("Could not open {}: {}", path, e)))?;
-        Ok(Self { reader: Reader::new(file) })
+        let file = File::open(&path).map_err(|e| {
+            pyo3::exceptions::PyFileNotFoundError::new_err(format!(
+                "Could not open {}: {}",
+                path, e
+            ))
+        })?;
+        Ok(Self {
+            reader: Reader::new(file),
+        })
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
@@ -32,7 +38,10 @@ impl FastaReader {
     }
 
     // Pass `py: Python<'py>` to interact with Python memory
-    fn __next__<'py>(mut slf: PyRefMut<'_, Self>, py: Python<'py>) -> PyResult<Option<(Bound<'py, PyBytes>, Bound<'py, PyBytes>)>> {
+    fn __next__<'py>(
+        mut slf: PyRefMut<'_, Self>,
+        py: Python<'py>,
+    ) -> PyResult<Option<(Bound<'py, PyBytes>, Bound<'py, PyBytes>)>> {
         match slf.reader.next() {
             Some(Ok(record)) => {
                 let head = PyBytes::new(py, record.id_bytes());
@@ -58,9 +67,15 @@ impl FastqReader {
     /// Open a FASTQ file for reading.
     #[new]
     fn new(path: String) -> PyResult<Self> {
-        let file = File::open(&path)
-            .map_err(|e| pyo3::exceptions::PyFileNotFoundError::new_err(format!("Could not open {}: {}", path, e)))?;
-        Ok(Self { reader: fastq::Reader::new(file) })
+        let file = File::open(&path).map_err(|e| {
+            pyo3::exceptions::PyFileNotFoundError::new_err(format!(
+                "Could not open {}: {}",
+                path, e
+            ))
+        })?;
+        Ok(Self {
+            reader: fastq::Reader::new(file),
+        })
     }
 
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
@@ -68,7 +83,17 @@ impl FastqReader {
     }
 
     /// Yields a tuple of (header, sequence, quality_string)
-    fn __next__<'py>(mut slf: PyRefMut<'_, Self>, py: Python<'py>) -> PyResult<Option<(Bound<'py, PyBytes>, Bound<'py, PyBytes>, Bound<'py, PyBytes>)>> {
+    #[allow(clippy::type_complexity)]
+    fn __next__<'py>(
+        mut slf: PyRefMut<'_, Self>,
+        py: Python<'py>,
+    ) -> PyResult<
+        Option<(
+            Bound<'py, PyBytes>,
+            Bound<'py, PyBytes>,
+            Bound<'py, PyBytes>,
+        )>,
+    > {
         match slf.reader.next() {
             Some(Ok(record)) => {
                 let head = PyBytes::new(py, record.id_bytes());
