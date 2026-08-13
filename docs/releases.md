@@ -8,6 +8,19 @@ categories:
   - Development
 ---
 
+# v0.0.3
+*Published on 2026-08-13*
+
+## What's Changed
+* Bump actions/checkout from 4 to 7 by @dependabot[bot] in https://github.com/tomdstanton/pyfgs/pull/16
+* Bump pyo3 from 0.28.3 to 0.29.0 by @dependabot[bot] in https://github.com/tomdstanton/pyfgs/pull/15
+* Bump codecov/codecov-action from 6 to 7 by @dependabot[bot] in https://github.com/tomdstanton/pyfgs/pull/14
+
+
+**Full Changelog**: https://github.com/tomdstanton/pyfgs/compare/v0.0.2...v0.0.3
+
+---
+
 # v0.0.2
 *Published on 2026-05-27*
 
@@ -47,13 +60,6 @@ Updated pyfgs to use the insertion/deletion vectors to generate [Snippy](https:/
 *Published on 2026-03-23*
 
 **Full Changelog**: https://github.com/tomdstanton/pyfgs/compare/v0.0.1-alpha.2...v0.0.1-alpha.3
-
----
-
-# v0.0.1-alpha.2
-*Published on 2026-03-20*
-
-**Full Changelog**: https://github.com/tomdstanton/pyfgs/compare/v0.0.1-alpha.1...v0.0.1-alpha.2
 
 ---
 
