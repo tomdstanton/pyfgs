@@ -6,37 +6,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  version-check:
-    name: 🛡️ Enforce Version Sync
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write  # REQUIRED: Allows the OIDC token to be generated
-      contents: read   # REQUIRED: Allows actions/checkout to read the repo
-      
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Assert Tag matches Cargo.toml
-        run: |
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          CARGO_VERSION=$(grep '^version =' Cargo.toml | head -n 1 | awk -F '"' '{print $2}')
-          
-          if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-            echo "::error::🚨 Version Mismatch! GitHub Release tag is v$TAG_VERSION, but Cargo.toml says $CARGO_VERSION."
-            exit 1
-          fi
-          echo "✅ Versions match (v$TAG_VERSION). Proceeding to build wheels!"
-
   build-wheels:
     name: Build Wheels
-    needs: version-check
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-    
+
     steps:
       - uses: actions/checkout@v7
+
+      - name: Sync Cargo.toml version to Release Tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ -n "$TAG_VERSION" ]; then
+            echo "Syncing Cargo.toml version to $TAG_VERSION..."
+            python3 -c "import re; content = open('Cargo.toml').read(); content = re.sub(r'^version\s*=\s*\".*\"', 'version = \"' + '$TAG_VERSION' + '\"', content, count=1); open('Cargo.toml', 'w').write(content)"
+          fi
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -57,6 +43,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Sync Cargo.toml version to Release Tag
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ -n "$TAG_VERSION" ]; then
+            echo "Syncing Cargo.toml version to $TAG_VERSION..."
+            python3 -c "import re; content = open('Cargo.toml').read(); content = re.sub(r'^version\s*=\s*\".*\"', 'version = \"' + '$TAG_VERSION' + '\"', content, count=1); open('Cargo.toml', 'w').write(content)"
+          fi
+
       - name: Build sdist
         uses: PyO3/maturin-action@v1
         with:
@@ -69,25 +63,50 @@ jobs:
           name: wheels-sdist
           path: dist
 
+  sync-repo-version:
+    name: 🔄 Sync Cargo.toml in main
+    needs: [build-wheels, build-sdist]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Commit Cargo.toml version bump back to main if updated
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ -n "$TAG_VERSION" ]; then
+            python3 -c "import re; content = open('Cargo.toml').read(); content = re.sub(r'^version\s*=\s*\".*\"', 'version = \"' + '$TAG_VERSION' + '\"', content, count=1); open('Cargo.toml', 'w').write(content)"
+            python3 scripts/generate_release_notes.py
+            git add Cargo.toml docs/releases.md
+            if ! git diff --cached --quiet; then
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git commit -m "chore: bump version to $TAG_VERSION and update release notes [skip ci]"
+              git push origin main
+            fi
+          fi
+
   publish:
-      name: Publish to PyPI
-      needs: [build-wheels, build-sdist]
-      runs-on: ubuntu-latest
-      environment: pypi
-      
-      # ADD THE PERMISSIONS BLOCK HERE
-      permissions:
-        id-token: write  # REQUIRED: Allows the OIDC token to be generated for PyPI
-        contents: read   # REQUIRED: To download artifacts or read the repo
-        
-      steps:
-        - name: Download all artifacts
-          uses: actions/download-artifact@v4
-          with:
-            path: dist
-            merge-multiple: true
-  
-        - name: Publish to PyPI
-          uses: pypa/gh-action-pypi-publish@release/v1
-          with:
-            skip-existing: true
+    name: Publish to PyPI
+    needs: [build-wheels, build-sdist, sync-repo-version]
+    runs-on: ubuntu-latest
+    environment: pypi
+
+    permissions:
+      id-token: write  # REQUIRED: Allows the OIDC token to be generated for PyPI
+      contents: read   # REQUIRED: To download artifacts or read the repo
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true

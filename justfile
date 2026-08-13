@@ -84,10 +84,16 @@ build-wheels:
 set-version VERSION:
     uv run python -c "import re; content = open('Cargo.toml').read(); content = re.sub(r'^version\s*=\s*\".*\"', 'version = \"' + '{{VERSION}}'.lstrip('v') + '\"', content, flags=re.MULTILINE); open('Cargo.toml', 'w').write(content)"
 
+# Generate release notes from GitHub API
+generate-releases:
+    uv run python scripts/generate_release_notes.py
+
 # --- Documentation ---
 
 prep-docs: install
     uv run scripts/generate_cli_docs.py
+    uv run python scripts/generate_api_docs.py
+    uv run python scripts/fetch_announcement.py
 
 # Build the documentation locally
 docs-build: prep-docs

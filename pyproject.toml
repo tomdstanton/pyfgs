@@ -89,4 +89,4 @@ ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 "benchmarks/*.py" = ["T201"]
-"scripts/*.py" = ["E402"]
+"scripts/*.py" = ["E402", "T201"]

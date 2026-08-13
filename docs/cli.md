@@ -1,10 +1,15 @@
 ---
-title: CLI Reference
+title: CLI Usage
 author: Tom Stanton
 comments: true
 tags: [markdown, documentation, web]
 icon: lucide/terminal
+categories:
+  - CLI
 ---
+
+🔗🐍⏭️	PyO3 bindings and Python interface to FragGeneScanRs,
+	a gene prediction model for short and error-prone reads.
 
 ```text
 usage: pyfgs <seq> [options]
@@ -42,5 +47,4 @@ Other options 🚧:
   -t, --threads       Number of threads (default: optimal)
   -v, --version       Print version and exit
   -h, --help          Print help and exit
-
 ```

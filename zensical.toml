@@ -1,5 +1,5 @@
 [project]
-site_name = "🔗🐍⏭️ pyfgs"
+site_name = "pyfgs Docs"
 site_description = "Python bindings to FragGeneScanRs for fast, error-tolerant bacterial ORF prediction"
 site_url = "https://tomdstanton.github.io/pyfgs"
 site_author = "Tom Stanton"
@@ -16,24 +16,23 @@ watch = ["python"]
 
 nav = [
     { Home = "index.md" },
-    { Usage = [
-        { "API Reference" = [
-        
-        ] },
-        "api.md",
-        "cli.md",
+    { "API Reference" = [
+      "reference/results.md",
+      "reference/models.md",
+      "reference/io.md",
     ] },
+    "cli.md",
     "benchmarks.md",
     { Development = [
         "contributing.md",
         "conduct.md",
+        "releases.md"
   ] },
 ]
 
 plugins = [
   "search",
-  { mkdocstrings = { handlers = { python = { options = { docstring_style = "google" } } } } },
-  { api-autonav = { modules = ["python/pyfgs"], nav_section_title = "API Reference" } },
+  { mkdocstrings = { handlers = { python = { paths = ["python"], inventories = ["https://docs.python.org/3/objects.inv"], options = { docstring_style = "google", docstring_section_style = "list", relative_crossrefs = true, scoped_crossrefs = true, signature_crossrefs = true, unwrap_annotated = true, filters = "public", inherited_members = true, summary = true, heading_level = 2, parameter_headings = true, type_parameter_headings = true, show_root_heading = false, show_root_full_path = false, show_symbol_type_heading = true, show_symbol_type_toc = true, line_length = 88, merge_init_into_class = true, separate_signature = true, show_signature_annotations = true, show_signature_type_parameters = true, backlinks = "tree", show_bases = false, show_inheritance_diagram = true, docstring_options = { ignore_init_summary = true } } } } } },
   { reading-time = { words_per_minute = 200 } },
   "include-markdown",
   "offline",
@@ -41,9 +40,10 @@ plugins = [
 
 [project.theme]
 name = "material"
+custom_dir = "overrides"
 icon.repo = "fontawesome/brands/github"
-font.text = "Roboto Slab"
-font.code = "JetBrains Mono"
+font.text = "Manrope"
+font.code = "IBM Plex Mono"
 
 palette = [
     { media = "(prefers-color-scheme)", toggle = { icon = "lucide/sun-moon", name = "Switch to light mode" } },
@@ -64,8 +64,8 @@ features = [
     "navigation.tabs",
     "navigation.tabs.sticky",
     "navigation.tracking",
-    "navigation.sections",
-    "navigation.expand",
+    # "navigation.sections",
+    # "navigation.expand",
     "navigation.instant",
     "navigation.instant.progress",
     "navigation.path",
@@ -93,7 +93,7 @@ toc = { permalink = true, title = "On this page" }
 "pymdownx.arithmatex" = { generic = true }
 "pymdownx.details" = {}
 "pymdownx.emoji" = { emoji_index = "zensical.extensions.emoji.twemoji", emoji_generator = "zensical.extensions.emoji.to_svg" }
-"pymdownx.highlight" = { anchor_linenums = true, use_pygments = true }
+"pymdownx.highlight" = { anchor_linenums = true, use_pygments = true, linenums = true, auto_title = true }
 "pymdownx.inlinehilite" = {}
 "pymdownx.snippets" = { base_path = ["."] }
 "pymdownx.superfences" = { custom_fences = [ { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" } ] }

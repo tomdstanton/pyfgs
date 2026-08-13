@@ -3,9 +3,10 @@
 
 import builtins
 import enum
+import typing
+
 import numpy
 import numpy.typing
-import typing
 
 __all__ = [
     "BedWriter",
@@ -33,9 +34,9 @@ class BedWriter:
     def __enter__(self) -> BedWriter: ...
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None: ...
     def write_record(
         self, genes: typing.Sequence[Gene], header: builtins.str, sequence: bytes
@@ -50,9 +51,9 @@ class FaaWriter:
     def __enter__(self) -> FaaWriter: ...
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None: ...
     def write_record(self, genes: typing.Sequence[Gene], header: builtins.str) -> None: ...
 
@@ -95,9 +96,9 @@ class FnaWriter:
     def __enter__(self) -> FnaWriter: ...
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None: ...
     def write_record(self, genes: typing.Sequence[Gene], header: builtins.str) -> None: ...
 
@@ -192,7 +193,7 @@ class GeneFinder:
     The main engine for finding genes, holding the HMM in memory.
     """
     def __new__(
-        cls, model: Model, whole_genome: typing.Optional[builtins.bool] = None
+        cls, model: Model, whole_genome: builtins.bool | None = None
     ) -> GeneFinder:
         r"""
         Initialize the GeneFinder.
@@ -257,9 +258,9 @@ class Gff3Writer:
     def __enter__(self) -> Gff3Writer: ...
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None: ...
     def write_record(
         self, genes: typing.Sequence[Gene], header: builtins.str, sequence: bytes
@@ -373,9 +374,9 @@ class VcfWriter:
         """
     def __exit__(
         self,
-        _exc_type: typing.Optional[typing.Any],
-        _exc_value: typing.Optional[typing.Any],
-        _traceback: typing.Optional[typing.Any],
+        _exc_type: typing.Any | None,
+        _exc_value: typing.Any | None,
+        _traceback: typing.Any | None,
     ) -> None:
         r"""
         Context manager exit (`__exit__`). Flushes and closes the file.
