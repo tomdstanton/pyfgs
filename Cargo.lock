@@ -580,7 +580,7 @@ dependencies = [
 
 [[package]]
 name = "pyfgs"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "frag_gene_scan_rs",
  "mimalloc",
