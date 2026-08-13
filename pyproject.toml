@@ -66,17 +66,15 @@ binding = "pyo3"
 python-source = "python"
 features = ["pyo3/extension-module"]
 module-name = "pyfgs._pyfgs"
+profile = "release"
 
-[tool.mypy]
-check_untyped_defs = true
-disallow_untyped_defs = true
+[tool.ty]
+# Typecheck everything and disallow untyped definitions by enabling strict checks
 
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-disallow_untyped_defs = false
-
-[tool.pytest.ini_options]
-minversion = "6.0"
+[tool.karva.profile.default.coverage]
+sources = ["python/pyfgs"]
+report = "xml"
+report-path = "coverage.xml"
 
 [tool.ruff]
 line-length = 100

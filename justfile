@@ -28,7 +28,7 @@ test +args="": install
 
 # Run tests with coverage using karva
 test-cov +args="": install
-    uvx --with . --with pytest --with pytest-cov karva test tests/ {{args}}
+    uvx --with . --with pytest karva test --cov tests/ {{args}}
 
 # Run benchmarks
 benchmark: install
@@ -73,7 +73,7 @@ lint-rust:
 # --- CI & Build ---
 
 # Run the full CI pipeline locally (format check, lint, test)
-ci: fmt-check lint test-cov
+ci: install fmt-check lint test-cov
 
 # Build release wheels using maturin
 build-wheels:
