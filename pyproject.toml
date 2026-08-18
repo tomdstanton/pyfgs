@@ -51,6 +51,7 @@ dev = [
     {include-group = "test"},
     {include-group = "docs"},
     "flameprof>=0.4",
+    "ty>=0.0.72",
 ]
 benches = [
     "pyrodigal>=3.7.1",

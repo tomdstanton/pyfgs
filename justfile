@@ -56,7 +56,7 @@ fmt-check-python:
 # Lint Python code
 lint-python:
     -uvx ruff check .
-    -uvx ty check .
+    -uv run ty check .
 
 # Format Rust code
 fmt-rust:

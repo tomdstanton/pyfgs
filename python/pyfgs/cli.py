@@ -18,128 +18,6 @@ _MODEL_MAP = {
 }
 
 
-# Stdin streamers ------------------------------------------------------------------------------------------------------
-def _FastaStreamer():
-    """A lightweight, pure-Python generator for piping FASTA via stdin."""
-    buffer = sys.stdin.buffer
-    header = None
-    seq = bytearray()
-
-    for line in buffer:
-        if line.startswith(b">"):
-            if header:
-                yield header, bytes(seq)
-            header, _, _ = line[1:].rstrip().partition(b" ")
-            seq = bytearray()
-        else:
-            seq.extend(line.rstrip())
-
-    if header:
-        yield header, bytes(seq)
-
-
-def _FastqStreamer():
-    """A lightweight, pure-Python generator for piping FASTQ via stdin."""
-    line = sys.stdin.buffer.readline
-    while True:
-        raw_line = line()
-        if not raw_line:
-            break
-        header, _, _ = raw_line[1:].rstrip().partition(b" ")
-        seq = line().rstrip()
-        line()  # skip +
-        line()  # skip qual
-        yield header, seq
-
-
-# Formatters -----------------------------------------------------------------------------------------------------------
-def _FaaFormatter(header, seq, genes) -> bytes:
-    return b"".join(
-        b">%s_FGS_%d\n%s\n" % (header, n, gene.translation())
-        for n, gene in enumerate(genes, start=1)
-    )
-
-
-def _FnaFormatter(header, seq, genes) -> bytes:
-    return b"".join(
-        b">%s_FGS_%d\n%s\n" % (header, n, gene.sequence()) for n, gene in enumerate(genes, start=1)
-    )
-
-
-def _BedFormatter(header, seq, genes) -> bytes:
-    lines = []
-    for n, gene in enumerate(genes, start=1):
-        muts = gene.mutations(seq)
-        mut_str = b"."
-        if muts:
-            mut_info = [
-                f"pos={m.pos};type={m.mut_type};codon={m.codon_idx};note={m.annotation}".encode()
-                for m in muts
-            ]
-            mut_str = b",".join(mut_info)
-
-        strand = b"+" if gene.strand == 1 else b"-"
-        lines.append(
-            b"%s\t%d\t%d\t%s_FGS_%d\t%.2f\t%s\t%s\n"
-            % (header, gene.start, gene.end, header, n, gene.score, strand, mut_str)
-        )
-    return b"".join(lines)
-
-
-def _GffFormatter(header, seq, genes) -> bytes:
-    lines = []
-    for n, gene in enumerate(genes, start=1):
-        muts = gene.mutations(seq)
-        start = gene.start + 1  # GFF3 is 1-based closed
-        strand = b"+" if gene.strand == 1 else b"-"
-        gene_id = b"%s_FGS_%d" % (header, n)
-
-        if muts:
-            notes = b",".join(
-                b"Frameshift %b at pos %d (codon %d)"
-                % (b"insertion" if m.mut_type == "ins" else b"deletion", m.pos, m.codon_idx)
-                for m in muts
-            )
-
-            lines.append(
-                b"%s\tpyfgs\tpseudogene\t%d\t%d\t%.2f\t%s\t0\tID=%s;inference=ab initio prediction:pyfgs;pseudogene=unknown;Note=%s\n"
-                % (header, start, gene.end, gene.score, strand, gene_id, notes)
-            )
-        else:
-            lines.append(
-                b"%s\tpyfgs\tCDS\t%d\t%d\t%.2f\t%s\t0\tID=%s;inference=ab initio prediction:pyfgs\n"
-                % (header, start, gene.end, gene.score, strand, gene_id)
-            )
-    return b"".join(lines)
-
-
-def _VcfFormatter(header, seq, genes) -> bytes:
-    lines = []
-    for n, gene in enumerate(genes, start=1):
-        muts = gene.mutations(seq)
-        if not muts:
-            continue
-
-        gene_id = b"%s_FGS_%d" % (header, n)
-
-        for m in muts:
-            # Convert strings to bytes for fast I/O
-            mut_type = b"insertion" if m.mut_type == "ins" else b"deletion"
-            ref = m.ref_allele.encode()
-            alt = m.alt_allele.encode()
-            ann = m.annotation.encode()
-
-            # Build the SnpEff compliant ANN string
-            info = (
-                b"TYPE=frameshift_%s;GENE=%s;CODON=%d;ANN=%s|frameshift_variant|HIGH|%s|%s|transcript|%s|protein_coding|%d/1|%s"
-                % (mut_type, gene_id, m.codon_idx, alt, gene_id, gene_id, gene_id, m.codon_idx, ann)
-            )
-
-            lines.append(b"%s\t%d\t.\t%s\t%s\t.\tPASS\t%s\n" % (header, m.pos, ref, alt, info))
-
-    return b"".join(lines)
-
-
 # Helper functions -----------------------------------------------------------------------------------------------------
 def _get_optimal_threads() -> int:
     if hasattr(os, "process_cpu_count"):
@@ -253,17 +131,9 @@ def main():
     args = parser.parse_args()
 
     # 1. Output Resolution & Validation --------------------------------------------------------------------------------
-    formats_map = {
-        "faa": _FaaFormatter,
-        "fna": _FnaFormatter,
-        "bed": _BedFormatter,
-        "gff": _GffFormatter,
-        "vcf": _VcfFormatter,
-    }
+    formats = ["faa", "fna", "bed", "gff", "vcf"]
 
-    active_outputs = {
-        fmt: getattr(args, fmt) for fmt in formats_map if getattr(args, fmt) is not None
-    }
+    active_outputs = {fmt: getattr(args, fmt) for fmt in formats if getattr(args, fmt) is not None}
 
     if not active_outputs:
         active_outputs["faa"] = "-"
