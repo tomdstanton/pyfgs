@@ -42,7 +42,7 @@ PyPI = "https://pypi.org/project/pyfgs"
 pyfgs = "pyfgs.cli:main"
 
 [dependency-groups]
-test = ["pytest", "pytest-cov"]
+test = ["pytest"]
 docs = [
     "zensical",
     "mkdocstrings[python]",
